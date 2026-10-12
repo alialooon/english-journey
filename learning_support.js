@@ -150,7 +150,7 @@ function bindActions(){
  work.querySelectorAll('[data-writing-check]').forEach(btn=>{
   const ref=btn.dataset.writingCheck;
   const block=btn.closest('.writing-item');
-  if(block&&!record(dayFocus).steps[4])add(block,'writing',ref);
+  if(block&&!record(dayFocus).steps[4])add(block.querySelector('.writing-inputrow')||block,'writing',ref);
  });
  const writing=work.querySelector('#lesson-writing');
  if(writing&&!record(dayFocus).steps[4])add(writing,'writing','text');
