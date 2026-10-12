@@ -3,7 +3,7 @@
    Optional listening never gates lessons or exams. No external evaluation service. */
 (function(){
 'use strict';
-if(typeof EJ13_TASKS==='undefined'||typeof store==='undefined'||EJ13_TASKS.length!==54){console.error('CEFR diagnostic bank unavailable');return;}
+if(typeof EJ13_TASKS==='undefined'||typeof store==='undefined'||EJ13_TASKS.length!==108){console.error('CEFR diagnostic bank unavailable');return;}
 const LEVELS=['A1','A2','B1'];
 const DOMAINS=[
  ['reading','Чтение и поиск информации'],
@@ -13,7 +13,7 @@ const DOMAINS=[
  ['coherence','Связное высказывание'],
  ['problem','Решение ситуации']
 ];
-const STORAGE_VERSION=1;
+const STORAGE_VERSION=2;
 const MAX_CHARS=1600;
 let selectedLevel='A1',flash='';
 function ed(){
@@ -34,22 +34,37 @@ function normalize13(v){return String(v||'').normalize('NFKD').toLowerCase().rep
  .replace(/[^a-z0-9:\s']/g,' ').replace(/\s+/g,' ').trim();}
 function isMatch13(v,pattern){try{return new RegExp('(?:^|\\b)(?:'+pattern+')(?:\\b|$)','i').test(v)}catch(e){return false;}}
 function evaluate13(task,input){
+ // Local conservative rubric: two independent facts + appropriate form + sufficient useful language.
+ // No claim of full semantic/grammar understanding; only explicit validated evidence is credited.
  const normalized=normalize13(input),tokens=normalized.match(/[a-z0-9]+(?:'[a-z]+)?/g)||[];
  const checks=task.checks.map(c=>({label:c.label,ok:c.patterns.some(p=>isMatch13(normalized,p))}));
+ // In the first A1 reading task, naming the weekday alone is NOT the requested time.
+ if(task.id==='A1-R-1'){
+  const day=/\bfriday\b/.test(normalized),hour=/\b(?:five(?:\s*o'?clock)?|5(?::00)?(?:\s*pm)?)\b/.test(normalized);
+  checks[1].ok=day&&hour;
+  checks[1].label='пятница и время 5:00';
+ }
+ if(task.id==='A1-R-2')checks[1].ok=/\bdining room\b/.test(normalized);
  const form=task.forms.some(p=>isMatch13(normalized,p));
  const enough=tokens.length>=task.minWords;
+ const lexical=tokens.filter(w=>!['a','an','the','i','you','we','he','she','it','is','are','was','were','and','to','of','in','on','for','at','do','does'].includes(w));
+ const freq={};for(const t of lexical)freq[t]=(freq[t]||0)+1;
  const distinct=new Set(tokens).size;
- const repetitive=distinct<Math.min(5,Math.max(2,Math.ceil(task.minWords/2)));
- const hasVerb=/\b(?:am|is|are|was|were|have|has|had|can|could|would|will|shall|should|must|do|does|did|went|came|got|took|lost|want|need|like|prefer|book|arrived|missed|called|contact|check|give|tell|help|show|change|move|visit|pay|buy|choose|chose|decided|plan|planned|because|going|taking|go|get|take|would|may|might|thanks|thank|please|meet|see|live|work|eat|drink|stay|close|open|leaves?|starts?|costs?|cancelled|delayed)\b/.test(normalized);
- const grammatical=task.level==='B1'&&task.domain!=='reading'?!(!hasVerb):true;
- const points=checks.filter(x=>x.ok).length+Number(form)+Number(enough&&!repetitive&&grammatical);
- const pass=checks.every(x=>x.ok)&&points>=(task.level==='B1'?4:3)&&!repetitive&&grammatical;
- return {points,pass,checks,form,enough,repetitive,grammatical,words:tokens.length};
+ const repetitive=distinct<Math.min(7,Math.max(3,Math.ceil(task.minWords*0.52)))||
+  Object.values(freq).some(count=>count>=5)||
+  /\b(?:blah|asdf|qwerty|lorem|ipsum)\b/.test(normalized);
+ const hasVerb=/\b(?:am|is|are|was|were|have|has|had|can|could|would|will|should|must|do|does|did|went|came|got|took|lost|want|wanted|need|needed|like|liked|prefer|preferred|book|booked|arrived|missed|called|contact|contacted|check|checked|give|gave|tell|told|help|helped|show|shown|change|changed|move|moved|visit|visited|pay|paid|buy|bought|choose|chose|decide|decided|plan|planned|go|going|get|getting|take|taking|meet|met|see|saw|live|lived|work|worked|eat|ate|drink|drank|stay|stayed|open|opens|close|closes|leave|leaves|start|starts|cost|costs|cancel|cancelled|delay|delayed|wait|waited|lost|found|receive|received|send|sent|offer|offered|learn|learned|realized|realised|speak|spoke|walk|walked|travel|travelled|be|been)\b/.test(normalized);
+ const requiresVerb=(task.domain==='grammar'||(task.level==='B1'&&['interaction','coherence','problem','practical'].includes(task.domain)));
+ const grammatical=!requiresVerb||hasVerb;
+ const contextCopy=Boolean(task.context)&&normalize13(task.context).length>95&&normalized.includes(normalize13(task.context).slice(0,80));
+ const complete=checks.every(x=>x.ok)&&form&&enough&&!repetitive&&grammatical&&!contextCopy;
+ const points=checks.filter(x=>x.ok).length+Number(form)+Number(enough&&!repetitive&&grammatical&&!contextCopy);
+ return {points:Math.min(4,points),pass:complete,checks,form,enough,repetitive:repetitive||contextCopy,grammatical,words:tokens.length};
 }
 function selectedData(){return ed().levels[selectedLevel]}
 function getTask(level,domain,variant){return EJ13_TASKS.find(x=>x.level===level&&x.domain===domain&&x.variant===variant);}
 function testTasks(level,roundIndex){return DOMAINS.map(([domain],i)=>{
- const variant=(roundIndex+i)%3;
+ const variant=(roundIndex*2+i+3)%6;
  const row=getTask(level,domain,variant);
  if(!row)throw Error('Нет диагностического задания '+level+' '+domain);
  return row;
