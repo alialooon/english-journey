@@ -1,6 +1,6 @@
-/* English Journey 13.1 — atomic offline shell update.
+/* English Journey 13.2 — atomic offline shell update.
  * Never caches third-party audio or transfers learner data. */
-const CACHE_NAME='english-journey-local-v13-1-0';
+const CACHE_NAME='english-journey-local-v13-2-0';
 const ASSETS=['./','./index.html','./style.css','./authentic_lab.css','./diagnostic.css',
  './course_data.js','./vocabulary_data.js','./skills_data.js','./a1_extension.js',
  './a2_extension.js','./curriculum_data.js','./advanced_course.js','./quality_data.js',

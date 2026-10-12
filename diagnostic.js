@@ -33,14 +33,29 @@ function normalize13(v){return String(v||'').normalize('NFKD').toLowerCase().rep
  .replace(/\bdon't\b/g,'do not').replace(/\bdoesn't\b/g,'does not').replace(/\bcan't\b/g,'cannot').replace(/\bi'm\b/g,'i am').replace(/\bwe're\b/g,'we are').replace(/\bit's\b/g,'it is')
  .replace(/[^a-z0-9:\s']/g,' ').replace(/\s+/g,' ').trim();}
 function isMatch13(v,pattern){try{return new RegExp('(?:^|\\b)(?:'+pattern+')(?:\\b|$)','i').test(v)}catch(e){return false;}}
+function asserted13(text,pattern){
+ // A negated fact such as "not Friday" or "not five" must not count as a positive fact.
+ // Constructions whose own pattern begins with a negator (e.g. "without ice") remain valid.
+ let matcher;
+ try{matcher=new RegExp('(?:^|\\b)(?:'+pattern+')(?:\\b|$)','gi')}catch(e){return false;}
+ let match;
+ while((match=matcher.exec(text))!==null){
+  if(/^(?:not|no|never|without)\b/i.test(match[0]))return true;
+  const start=Math.max(text.lastIndexOf('.',match.index),text.lastIndexOf(';',match.index),text.lastIndexOf('!',match.index));
+  const preceding=text.slice(Math.max(start+1,match.index-42),match.index);
+  if(!/\b(?:not|never|no|without|isn't|wasn't|weren't|aren't|don't|doesn't|didn't|cannot|can't)\b(?:\s+[a-z]+){0,2}\s*$/i.test(preceding))return true;
+  if(matcher.lastIndex===match.index)matcher.lastIndex++;
+ }
+ return false;
+}
 function evaluate13(task,input){
  // Local conservative rubric: two independent facts + appropriate form + sufficient useful language.
  // No claim of full semantic/grammar understanding; only explicit validated evidence is credited.
  const normalized=normalize13(input),tokens=normalized.match(/[a-z0-9]+(?:'[a-z]+)?/g)||[];
- const checks=task.checks.map(c=>({label:c.label,ok:c.patterns.some(p=>isMatch13(normalized,p))}));
+ const checks=task.checks.map(c=>({label:c.label,ok:c.patterns.some(p=>asserted13(normalized,p))}));
  // In the first A1 reading task, naming the weekday alone is NOT the requested time.
  if(task.id==='A1-R-1'){
-  const day=/\bfriday\b/.test(normalized),hour=/\b(?:five(?:\s*o'?clock)?|5(?::00)?(?:\s*pm)?)\b/.test(normalized);
+  const day=asserted13(normalized,'friday'),hour=asserted13(normalized,"five(?:\\s*o'?clock)?|5(?::00)?(?:\\s*pm)?");
   checks[1].ok=day&&hour;
   checks[1].label='пятница и время 5:00';
  }
@@ -63,12 +78,16 @@ function evaluate13(task,input){
 }
 function selectedData(){return ed().levels[selectedLevel]}
 function getTask(level,domain,variant){return EJ13_TASKS.find(x=>x.level===level&&x.domain===domain&&x.variant===variant);}
-function testTasks(level,roundIndex){return DOMAINS.map(([domain],i)=>{
- const variant=(roundIndex*2+i+3)%6;
- const row=getTask(level,domain,variant);
- if(!row)throw Error('Нет диагностического задания '+level+' '+domain);
- return row;
-});}
+function testTasks(level,roundIndex,previousRounds=[]){
+ // All six variants are reachable. After existing attempts prefer a task never answered before,
+ // including attempts started under previous app versions.
+ const attempted=new Set(previousRounds.flatMap(r=>(r.answers||[]).map(x=>x.id)));
+ return DOMAINS.map(([domain],i)=>{
+  const variants=Array.from({length:6},(_,n)=>getTask(level,domain,(roundIndex+i+3+n)%6));
+  if(variants.some(x=>!x))throw Error('Нет шести диагностических вариантов '+level+' '+domain);
+  return variants.find(task=>!attempted.has(task.id))||variants[0];
+ });
+}
 function summary13(level){const obj=ed().levels[level],rounds=obj.rounds;
  let chain=0,previousDate=null;
  for(const r of rounds){if(r.passed){
@@ -80,7 +99,7 @@ function summary13(level){const obj=ed().levels[level],rounds=obj.rounds;
  return {chain,stable,next,last,attempts:rounds.length,active:!!obj.active,ready:!next||localDate()>=next};}
 function start13(){const obj=selectedData(),s=summary13(selectedLevel);
  if(obj.active||s.stable||!s.ready)return;
- obj.active={date:localDate(),startedAt:new Date().toISOString(),ids:testTasks(selectedLevel,obj.rounds.length).map(x=>x.id),answers:{},cursor:0};
+ obj.active={date:localDate(),startedAt:new Date().toISOString(),ids:testTasks(selectedLevel,obj.rounds.length,obj.rounds).map(x=>x.id),answers:{},cursor:0};
  flash='';save();render();}
 function currentTask13(active){return EJ13_TASKS.find(t=>t.id===active.ids[active.cursor]);}
 function saveAnswer13(){const obj=selectedData(),a=obj.active,t=a&&currentTask13(a);
