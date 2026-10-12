@@ -1,0 +1,108 @@
+/* English Journey 13.3 — light/dark/system palette. Loaded after all legacy CSS. */
+
+/* Accessible controls in Settings and a compact shortcut visible on every page. */
+.topline-tools{display:flex;gap:9px;align-items:center}
+.appearance-toggle{display:grid;place-items:center;width:40px;height:40px;flex-shrink:0;
+ border:1px solid var(--stroke);border-radius:12px;background:var(--paper);
+ color:var(--ink);font-size:19px;line-height:1;cursor:pointer}
+.appearance-toggle:hover{border-color:var(--accent);filter:brightness(1.08)}
+.appearance-toggle:focus-visible,.appearance-choice:focus-within{outline:3px solid var(--accent2);outline-offset:3px}
+.appearance-panel{margin-top:18px}
+.appearance-choices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px;
+ margin:16px 0 12px;padding:0;border:0;min-width:0}
+.appearance-choices legend{padding:0 0 8px}
+.appearance-choice{display:flex;align-items:flex-start;gap:9px;padding:14px 12px;
+ border:1px solid var(--stroke);border-radius:13px;background:var(--paper);cursor:pointer;min-width:0}
+.appearance-choice input{accent-color:var(--accent);margin:3px 0 0;flex-shrink:0;width:18px;height:18px}
+.appearance-choice span{display:flex;flex-direction:column;gap:4px;min-width:0}
+.appearance-choice b{font-size:14px;color:var(--ink)}
+.appearance-choice small{font-size:12px;color:var(--muted)}
+.appearance-choice:has(input:checked){border-color:var(--accent);background:var(--soft)}
+@media(max-width:650px){
+ .appearance-choices{grid-template-columns:1fr}
+ .appearance-choice{padding:12px}
+ .appearance-toggle{width:37px;height:37px}
+ .topline-tools .chip{font-size:11px;padding:7px 9px}
+}
+
+/* Explicit theme, not a media query: choosing "light" works even on a dark OS. */
+:root[data-theme="dark"]{
+ color-scheme:dark;
+ --ink:#eef2fc;
+ --muted:#aabbd4;
+ --accent:#aaa2ff;
+ --accent2:#aca4ff;
+ --bg:#0c1322;
+ --paper:#172134;
+ --stroke:#35445b;
+ --good:#77dfb3;
+ --soft:#292746;
+ --warn:#ffbc7f;
+ --surface:#19273b;
+ --input-bg:#111b2d;
+ --text:#eef2fc;
+ --line:#35445b;
+}
+[data-theme="dark"] body{background:var(--bg);color:var(--ink)}
+[data-theme="dark"] a{color:#b5b1ff}
+[data-theme="dark"] a:hover{color:#e0deff}
+[data-theme="dark"] :is(.side){background:#101827}
+[data-theme="dark"] :is(.nav button.active,.nav button:hover){background:#303d60}
+[data-theme="dark"] :is(.topline .hello,.lesson-head p,.learn p,.today p,.assessment-banner p,.external-links p,.retry-box p,.roadrow p,.eta-sub,.eta-note,.metric,.week p){color:#b0bfda}
+[data-theme="dark"] :is(.chip,.stat,.panel,.daytile,.stepbtn,.week,.roadrow,.report,.eta-card,.check-card,.external-links,.vocab-summary){
+ background:var(--paper);border-color:var(--stroke);color:var(--ink)
+}
+[data-theme="dark"] .chip{color:#d5dcf6}
+[data-theme="dark"] :is(button.outline,.sound,.choice,.word){
+ background:#1e2b40;border-color:#465775;color:#e6ecfd
+}
+[data-theme="dark"] :is(button.outline,.choice,.word,.check-card,.week,.daytile):hover{
+ background:#293651;border-color:#877eff;color:#f7f7ff
+}
+[data-theme="dark"] button.primary:not(.dark){background:#f6f3ff;color:#493fbd}
+[data-theme="dark"] button.primary.dark{background:#796ff7;color:#fff}
+[data-theme="dark"] .pill{background:#302b53;color:#cbc2ff}
+[data-theme="dark"] :is(.daytile.current,.stepbtn.selected,.week:hover,.check-card.need-check,.word.flipped){
+ background:#292747;border-color:#897cf3;color:#e6e1ff
+}
+[data-theme="dark"] :is(.daytile .dot,.stepicon,.progress){background:#2c3850;color:#c2d0ee}
+[data-theme="dark"] :is(.daytile.complete .dot,.stepbtn.done .stepicon){background:#193f38;color:#8af1c6}
+[data-theme="dark"] :is(.word .ru,.word .hint,.line .translation,.qcounter,.stat small,.daytile small,.check-card span:not(.pill),.check-card small,.eta-level span,.eta-dates span,.eta-caution,.vocab-summary small,.vocab-translation){color:#b7c4e1}
+[data-theme="dark"] :is(.dialogue,.writing,.vocab-practice,.learn .ex,.learn .notes,.lock-panel,.retry-box,.assessment-banner,.reading-source,.audio-resource,.skill-section){
+ background:#202d42;color:#e9effd;border-color:#40516f
+}
+[data-theme="dark"] :is(.learn .ex span,.learn .notes,.lock-panel p,.vocab-practice p){color:#bdc9e4}
+[data-theme="dark"] :is(.line,.mistake,.assessment-q,.eta-dates,.metric){border-color:var(--stroke)}
+[data-theme="dark"] :is(.assessment-submit,.road-goal .eta-card){background:var(--paper)}
+[data-theme="dark"] :is(.writing textarea,.vocab-practice input,.writing-practice,.skill-inputrow input,.ejlab-detail textarea,.ej13-task textarea,
+ input[type="text"],input[type="search"],input[type="email"],input[type="number"],select,textarea){
+ background:#111d2e;border-color:#566680;color:#f1f5ff;caret-color:#e9e7ff
+}
+[data-theme="dark"] input::placeholder,[data-theme="dark"] textarea::placeholder{color:#9babca;opacity:1}
+[data-theme="dark"] :is(.writing textarea,.ejlab-detail textarea,.ej13-task textarea,.skill-inputrow input):focus-visible{
+ outline:2px solid #a499ff;outline-offset:1px
+}
+[data-theme="dark"] :is(.answer-selected){background:#363062!important;color:#efecff!important;border-color:#aba2ff!important}
+[data-theme="dark"] :is(.choice.correct,.check-card.checked,.result,.donebanner,.eta-trend.faster,.activity span){background:#193e34;color:#93edc9;border-color:#438c73}
+[data-theme="dark"] :is(.choice.incorrect,.result.error){background:#46272f;color:#ffbbc1;border-color:#a96376}
+[data-theme="dark"] :is(.eta-trend.slower,.ej13-weak){background:#443521;color:#ffdc9d;border-color:#8f713d}
+[data-theme="dark"] :is(.eta-trend.neutral,.activity span.none){background:#293653;color:#c8d8fa}
+[data-theme="dark"] .mistake div:last-child{color:#8ee9bb}
+[data-theme="dark"] :is(.eta-level,.roadrow .round,.adapt-row,.word .en){color:#d3ccff}
+[data-theme="dark"] .roadrow .round{background:#292747}
+[data-theme="dark"] :is(.eta-dates b,.metric b,.vocab-summary strong,.vocab-prompt,.ej13-smallstat span,.ej13-skill p){color:#e6ebfc}
+[data-theme="dark"] .vocab-summary{background:var(--paper)}
+[data-theme="dark"] .vocab-practice{border-color:#514b80}
+[data-theme="dark"] .update-banner{background:#1d3145;border-color:#456785}
+[data-theme="dark"] .update-banner strong{color:#ecf5ff}
+[data-theme="dark"] .update-banner p{color:#c4d3e9}
+[data-theme="dark"] .update-banner button{background:#596dd4;color:#fff}
+[data-theme="dark"] .ejlab-detail .ejlab-source{background:#213c59;color:#badaff;border-color:#496b92}
+[data-theme="dark"] .ejlab-stats span{border-color:var(--stroke)}
+[data-theme="dark"] :is(.ej13-skill){background:#1b2940;border-color:var(--stroke)}
+[data-theme="dark"] .ej13-smallstat{background:#292747}
+[data-theme="dark"] .ej13-result{background:#1a4036;color:#bdf8df;border-color:#39735c}
+[data-theme="dark"] .ej13-weak{background:#443521;color:#ffe2af;border-color:#8c713f}
+[data-theme="dark"] .audio-resource a{color:#b9d9ff}
+[data-theme="dark"] .appearance-choice:has(input:checked){background:#302b52;border-color:#aaa0ff}
+[data-theme="dark"] :is(.hero,.hero h1,.hero p,.hero .eyebrow){color:#fff}

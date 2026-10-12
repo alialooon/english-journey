@@ -5,4 +5,4 @@
 .ej13-task h3{line-height:1.55}.ej13-result{padding:16px;margin:14px 0;border:1px solid #c8d6d0;border-radius:12px;background:#edf9f3;color:#16402d}.ej13-weak{background:#fff8e8;border-color:#ead9b5;color:#664a19}
 .ej13-skillgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:12px}.ej13-skill{border:1px solid #dfe4ed;padding:14px;border-radius:12px}.ej13-skill p{font-size:.82rem;margin:.5em 0 0;color:#536078}
 @media(max-width:540px){.ej13-smallstat{min-width:100%}.ej13-skillgrid{grid-template-columns:1fr}.ej13-progress{align-items:flex-start}}
-@media(prefers-color-scheme:dark){.ej13-smallstat{background:#222b41}.ej13-smallstat span,.ej13-status span,.ej13-skill p{color:#c5cfde}.ej13-skill{border-color:#344158}.ej13-task textarea{background:#1e283c;color:#edf2ff;border-color:#64738c}}
+:root[data-theme="dark"]{.ej13-smallstat{background:#222b41}.ej13-smallstat span,.ej13-status span,.ej13-skill p{color:#c5cfde}.ej13-skill{border-color:#344158}.ej13-task textarea{background:#1e283c;color:#edf2ff;border-color:#64738c}}

@@ -37,7 +37,7 @@ async function scenario(label,run){
 await scenario('startup, 100 topics, 600 lessons, optional listening',async page=>{
  assert.equal(await page.evaluate(()=>courses.length),100);
  assert.equal(await page.evaluate(()=>total),600);
- assert.equal(await page.evaluate(()=>APP_VERSION),'13.2.0');
+ assert.equal(await page.evaluate(()=>APP_VERSION),'13.3.0');
  assert.equal(await page.evaluate(()=>nextTask().type),'lesson');
  await page.locator('[data-open="0"]').first().click();
  const r=await page.evaluate(()=>({steps:record(0).steps,blocked:nextTask().type}));
@@ -166,6 +166,43 @@ await scenario('offline reload works after service worker installation',async (p
  await page.reload({waitUntil:'load'});
  assert.ok((await page.locator('#root').innerText()).length>100);
  await context.setOffline(false);
+});
+
+await scenario('dark / light / system themes persist without modifying learner progress',async (page)=>{
+ const initial=await page.evaluate(()=>localStorage.getItem('englishJourneyTravelV1'));
+ assert.equal(await page.evaluate(()=>document.documentElement.dataset.theme),'light');
+ const button=page.locator('#appearance-toggle');
+ assert.ok(await button.isVisible(),'Always-visible quick switch');
+ await button.click();
+ assert.equal(await page.evaluate(()=>document.documentElement.dataset.theme),'dark');
+ assert.equal(await page.evaluate(()=>localStorage.getItem('englishJourneyThemeV1')),'dark');
+ const darkCSS=await page.evaluate(()=>{
+  const panel=document.querySelector('.stat');
+  return {background:getComputedStyle(document.body).backgroundColor,
+   paper:panel?getComputedStyle(panel).backgroundColor:null};
+ });
+ assert.equal(darkCSS.background,'rgb(12, 19, 34)');
+ assert.equal(darkCSS.paper,'rgb(23, 33, 52)');
+ await page.locator('[data-page="settings"]').click();
+ assert.ok(await page.locator('input[name="ej-appearance"][value="dark"]').isChecked());
+ await page.locator('input[name="ej-appearance"][value="light"]').check();
+ assert.equal(await page.evaluate(()=>document.documentElement.dataset.theme),'light');
+ assert.equal(await page.evaluate(()=>localStorage.getItem('englishJourneyThemeV1')),'light');
+ assert.equal(await page.evaluate(()=>getComputedStyle(document.body).backgroundColor),'rgb(246, 247, 252)');
+ await page.emulateMedia({colorScheme:'dark'});
+ assert.equal(await page.evaluate(()=>document.documentElement.dataset.theme),'light');
+ await page.locator('input[name="ej-appearance"][value="system"]').check();
+ assert.equal(await page.evaluate(()=>document.documentElement.dataset.theme),'dark');
+ await page.emulateMedia({colorScheme:'light'});
+ assert.equal(await page.evaluate(()=>document.documentElement.dataset.theme),'light');
+ await page.locator('input[name="ej-appearance"][value="dark"]').check();
+ await page.reload({waitUntil:'load'});
+ assert.equal(await page.evaluate(()=>document.documentElement.dataset.theme),'dark');
+ assert.equal(await page.evaluate(()=>localStorage.getItem('englishJourneyThemeV1')),'dark');
+ const after=await page.evaluate(()=>localStorage.getItem('englishJourneyTravelV1'));
+ assert.equal(after,initial,'Switching theme may not mutate learning data');
+ await page.locator('[data-page="cefr-diagnostic"]').click();
+ assert.equal(await page.evaluate(()=>getComputedStyle(document.querySelector('.panel')).backgroundColor),'rgb(23, 33, 52)');
 });
 await browser.close();
 console.log('ALL PASS: '+passed+' Chromium integration scenarios.');
