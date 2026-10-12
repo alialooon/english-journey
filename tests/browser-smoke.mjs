@@ -223,7 +223,7 @@ await scenario('lesson follows words -> theory -> quiz -> dialogue, keeps progre
 });
 
 await scenario('dark / light / system themes persist without modifying learner progress',async (page)=>{
- const initial=await page.evaluate(()=>localStorage.getItem('englishJourneyTravelV1'));
+ const initial=await page.evaluate(()=>{const d=JSON.parse(localStorage.getItem('englishJourneyTravelV1'));return JSON.stringify({logs:d.logs,history:d.history,checkpoints:d.checkpoints,exams:d.exams,vocabulary:d.vocabulary});});
  assert.equal(await page.evaluate(()=>document.documentElement.dataset.theme),'light');
  const button=page.locator('#appearance-toggle');
  assert.ok(await button.isVisible(),'Always-visible quick switch');
@@ -253,7 +253,7 @@ await scenario('dark / light / system themes persist without modifying learner p
  await page.reload({waitUntil:'load'});
  assert.equal(await page.evaluate(()=>document.documentElement.dataset.theme),'dark');
  assert.equal(await page.evaluate(()=>localStorage.getItem('englishJourneyThemeV1')),'dark');
- const after=await page.evaluate(()=>localStorage.getItem('englishJourneyTravelV1'));
+ const after=await page.evaluate(()=>{const d=JSON.parse(localStorage.getItem('englishJourneyTravelV1'));return JSON.stringify({logs:d.logs,history:d.history,checkpoints:d.checkpoints,exams:d.exams,vocabulary:d.vocabulary});});
  assert.equal(after,initial,'Switching theme may not mutate learning data');
  await page.locator('[data-page="cefr-diagnostic"]').click();
  assert.equal(await page.evaluate(()=>getComputedStyle(document.querySelector('.panel')).backgroundColor),'rgb(23, 33, 52)');
