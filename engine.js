@@ -2,7 +2,7 @@
 const labelDays=['Основы темы','Слова и фразы','Слушаем и понимаем','Строим предложения','Ситуация из поездки','Повторение и мини-тест'];
 const STAGE_NAMES=['Теория','Словарь','Аудирование','Мини-тест','Речь и письмо'];
 const STORAGE_KEY='englishJourneyTravelV1'; // Сохраняем совместимость с первой версией.
-const APP_VERSION='10.0.0'; // Версия запущенного приложения; версия на Netlify хранится в version.json.
+const APP_VERSION='10.0.1'; // Версия запущенного приложения; версия на Netlify хранится в version.json.
 // Согласованная дата старта для личного плана (первый день — 12 октября 2026 года).
 const PLAN_START_YMD='2026-10-12';
 const A1_COURSE_WEEKS=25;
@@ -329,7 +329,7 @@ function topicBank(w){
  });
  const practice=SKILLS_DATA[w];
  practice.reading.questions.forEach((q,i)=>pool.push({id:`w${w}-context-${i}`,type:'reading',prompt:q.q,options:q.options.slice(),answer:q.answer,review:'Повтори чтение бытового текста и найди информацию по вопросу.',passage:practice.reading.text}));
- practice.audio.questions.forEach((q,i)=>pool.push({id:`w${w}-real-audio-${i}`,type:'listening',prompt:q.q,options:q.options.slice(),answer:q.answer,review:'Переслушай диалог VOA и обрати внимание на смысл.',audioUrl:practice.audio.url,audioTitle:practice.audio.title}));
+ practice.audio.questions.forEach((q,i)=>pool.push({id:`w${w}-real-audio-${i}`,type:'listening',prompt:q.q,options:q.options.slice(),answer:q.answer,review:'Переслушай оригинальную запись и обрати внимание на смысл.',audioUrl:practice.audio.url,audioTitle:practice.audio.title}));
  return pool;
 }
 function readyTomorrow(date){return Boolean(date) && dateYMD(new Date())<date}
@@ -378,7 +378,7 @@ function reviewPanel(mistakes,week){
 }
 function testChoiceMarkup(qs,answers,kind,offset=0){
  return qs.map((q,i)=>{
-  const idx=i+offset,selected=answers[idx];return `<div class="questiongroup assessment-q"><div class="qcounter">Вопрос ${idx+1} из ${kind==='exam'?36:qs.length} · ${q.type==='listening'?'Аудирование':q.type==='reading'?'Чтение':q.type==='vocabulary'?'Слова':'Грамматика'}</div>${q.passage?`<div class="reading-source assessment-text" lang="en">${esc(q.passage)}</div>`:''}${q.audioUrl?`<div class="audio-resource"><a href="${esc(q.audioUrl)}" target="_blank" rel="noopener noreferrer">▶ Реальная запись VOA: ${esc(q.audioTitle||'Открыть')} ↗</a></div>`:''}<div class="question">${esc(q.prompt)}</div>${q.spoken?`<button class="sound" data-assess-speak="${idx}">▶ Прослушать фразу</button><div class="tiny">Звук синтезируется браузером. Используй наушники.</div>`:''}${q.options.map((opt,j)=>`<button class="choice ${selected===j?'answer-selected':''}" data-${kind}-answer="${idx}:${j}" aria-pressed="${selected===j}">${String.fromCharCode(65+j)}. ${esc(opt)}</button>`).join('')}</div>`;
+  const idx=i+offset,selected=answers[idx];return `<div class="questiongroup assessment-q"><div class="qcounter">Вопрос ${idx+1} из ${kind==='exam'?36:qs.length} · ${q.type==='listening'?'Аудирование':q.type==='reading'?'Чтение':q.type==='vocabulary'?'Слова':'Грамматика'}</div>${q.passage?`<div class="reading-source assessment-text" lang="en">${esc(q.passage)}</div>`:''}${q.audioUrl?`<div class="audio-resource"><a href="${esc(q.audioUrl)}" target="_blank" rel="noopener noreferrer">▶ Реальная запись: ${esc(q.audioTitle||'Открыть')} ↗</a></div>`:''}<div class="question">${esc(q.prompt)}</div>${q.spoken?`<button class="sound" data-assess-speak="${idx}">▶ Прослушать фразу</button><div class="tiny">Звук синтезируется браузером. Используй наушники.</div>`:''}${q.options.map((opt,j)=>`<button class="choice ${selected===j?'answer-selected':''}" data-${kind}-answer="${idx}:${j}" aria-pressed="${selected===j}">${String.fromCharCode(65+j)}. ${esc(opt)}</button>`).join('')}</div>`;
  }).join('');
 }
 function testCooldown(rec){
@@ -431,7 +431,7 @@ function generateFinalQuestions(attempt,mode=examMode()){
 function newFinalAttempt(){const rec=examRecord(),qs=generateFinalQuestions(rec.attempts.length);rec.current={startedAt:new Date().toISOString(),questions:qs,answers:{},part:0,writing:'',speaking:false};save();return rec.current}
 function assessmentBanner(){
  const task=nextTask(),accepted=Object.values(store.checkpoints).filter(c=>c?.passedAt).length;
- return `<div class="panel assessment-banner"><div><div class="pill">Контроль усвоения · ${accepted}/${courses.length} тем</div><h3>${task.type==='topic'?'Пора проверить тему: '+esc(courses[task.week].title):task.type==='exam'?(task.level==='A1_full'?'Все 150 занятий пройдены — итоговый тест A1':'Начальный блок завершён — промежуточный экзамен'):task.type==='awaitingContent'?'Первые шесть тем A2 завершены; продолжение в разработке':'После каждой темы — обязательный тест'}</h3><p>${task.type==='topic'?'Следующая неделя откроется после зачёта. При ошибках повторный вариант доступен завтра.':task.type==='exam'?'Пройди внутренний итоговый тест, затем можешь проверить себя официальными образцами Cambridge.':task.type==='awaitingContent'?'Твой прогресс сохранён. Следующие темы A2 ещё не опубликованы.':'Для зачёта нужно минимум 80%. При ошибках приложение покажет, что повторить.'}</p></div><button class="primary dark" data-page="${task.type==='topic'?'checkpoint':task.type==='exam'?'exam':'roadmap'}">${task.type==='topic'?'Сдать тему →':task.type==='exam'?'Начать экзамен →':'Проверки знаний →'}</button></div>`;
+ return `<div class="panel assessment-banner"><div><div class="pill">Контроль усвоения · ${accepted}/${courses.length} тем</div><h3>${task.type==='topic'?'Пора проверить тему: '+esc(courses[task.week].title):task.type==='exam'?(task.level==='A1_full'?'Все 150 занятий пройдены — итоговый тест A1':'Начальный блок завершён — промежуточный экзамен'):task.type==='awaitingContent'?'Первые шесть тем A2 завершены; продолжение в разработке':'После каждой темы — обязательный тест'}</h3><p>${task.type==='topic'?'Следующая неделя откроется после зачёта. При ошибках повторный вариант доступен завтра.':task.type==='exam'?'Пройди внутренний итоговый тест, затем можешь проверить себя официальными образцами Cambridge.':task.type==='awaitingContent'?'Твой прогресс сохранён. Следующие темы A2 ещё не опубликованы.':'Для зачёта нужно минимум 80%. При ошибках приложение покажет, что повторить.'}</p></div><button class="primary dark" data-page="${task.type==='topic'?'checkpoint':task.type==='exam'?'exam':'roadmap'}">${task.type==='topic'?'Сдать тему →':task.type==='exam'?'Начать экзамен →':'План обучения →'}</button></div>`;
 }
 function homeNextSection(n,unit,week,mode){
  const task=nextTask();
