@@ -37,7 +37,7 @@ async function scenario(label,run){
 await scenario('startup, 100 topics, 600 lessons, optional listening',async page=>{
  assert.equal(await page.evaluate(()=>courses.length),100);
  assert.equal(await page.evaluate(()=>total),600);
- assert.equal(await page.evaluate(()=>APP_VERSION),'13.3.0');
+ assert.equal(await page.evaluate(()=>APP_VERSION),'13.4.0');
  assert.equal(await page.evaluate(()=>nextTask().type),'lesson');
  await page.locator('[data-open="0"]').first().click();
  const r=await page.evaluate(()=>({steps:record(0).steps,blocked:nextTask().type}));
@@ -168,6 +168,60 @@ await scenario('offline reload works after service worker installation',async (p
  await context.setOffline(false);
 });
 
+
+await scenario('lesson follows words -> theory -> quiz -> dialogue, keeps progress on reload',async page=>{
+ await page.locator('[data-open="0"]').first().click();
+ assert.equal(await page.evaluate(()=>EnglishJourneyFlow.current()),0);
+ assert.equal(await page.locator('.journey-step.active strong').innerText(),'Слова и выражения');
+ assert.equal(await page.locator('.journey-step').count(),4);
+ assert.equal(await page.locator('[data-journey-next]').isDisabled(),true);
+ assert.equal(await page.evaluate(()=>record(0).steps[2]),true,'Listening never blocks the flow');
+ await page.reload({waitUntil:'load'});
+ await page.locator('[data-open="0"]').first().click();
+ assert.equal(await page.evaluate(()=>EnglishJourneyFlow.current()),0);
+ for(let i=0;i<8;i++){
+  await page.locator('[data-vocab-recall]').click();
+  const answer=await page.evaluate(()=>VOCAB_MAP.get(record(0).vocabRecall).en);
+  await page.locator('#vocab-answer').fill(answer);
+  await page.locator('[data-vocab-submit]').click();
+ }
+ assert.equal(await page.evaluate(()=>record(0).steps[1]),true);
+ assert.equal(await page.evaluate(()=>EnglishJourneyFlow.current()),0);
+ await page.locator('[data-journey-next]').click();
+ assert.equal(await page.evaluate(()=>EnglishJourneyFlow.current()),1);
+ assert.equal(await page.locator('.journey-step.active strong').innerText(),'Правило и фразы');
+ await page.reload({waitUntil:'load'});
+ await page.locator('[data-open="0"]').first().click();
+ assert.equal(await page.evaluate(()=>EnglishJourneyFlow.current()),1,'Resume exactly where the learner stopped');
+ for(let i=0;i<2;i++){
+  const value=await page.evaluate(idx=>grammarExercises()[idx].en,i);
+  await page.locator('[data-grammar-input="'+i+'"]').fill(value);
+  await page.locator('[data-grammar-check="'+i+'"]').click();
+ }
+ assert.equal(await page.evaluate(()=>record(0).steps[0]),true);
+ await page.locator('[data-journey-next]').click();
+ assert.equal(await page.evaluate(()=>EnglishJourneyFlow.current()),2);
+ const questions=await page.evaluate(()=>qlist(courses[0],0,record(0).profile).map(q=>q[2]));
+ for(let i=0;i<questions.length;i++)await page.locator('[data-answer="'+i+':'+questions[i]+'"]').click();
+ const reading=await page.evaluate(()=>skillItem().reading.questions.map(q=>q.answer));
+ for(let i=0;i<reading.length;i++)await page.locator('[data-skill-reading="'+i+':'+reading[i]+'"]').click();
+ await page.locator('[data-skill-reading-submit]').click();
+ assert.equal(await page.evaluate(()=>record(0).steps[3]),true);
+ await page.locator('[data-journey-next]').click();
+ assert.equal(await page.evaluate(()=>EnglishJourneyFlow.current()),3);
+ for(let i=0;i<2;i++){
+  const correct=await page.evaluate(()=>{const s=ejSkills(record(0)).dialogue,branch=skillItem().dialogues[Number.isInteger(s.path)?s.path:dayFocus%2];return branch.turns[Number(s.turn)||0].correct;});
+  await page.locator('[data-dialog-answer="'+correct+'"]').click();
+ }
+ await page.locator('#lesson-writing').fill('I would like to ask for information about my hotel reservation please');
+ await page.locator('[data-mark="4"]').click();
+ assert.equal(await page.evaluate(()=>!!record(0).doneAt),true);
+ await page.locator('[data-journey-next]').click();
+ assert.equal(await page.evaluate(()=>dayFocus),1);
+ assert.equal(await page.evaluate(()=>EnglishJourneyFlow.current()),0);
+ assert.equal(await page.evaluate(()=>!!record(0).doneAt),true,'Completed prior lesson remains saved');
+});
+
 await scenario('dark / light / system themes persist without modifying learner progress',async (page)=>{
  const initial=await page.evaluate(()=>localStorage.getItem('englishJourneyTravelV1'));
  assert.equal(await page.evaluate(()=>document.documentElement.dataset.theme),'light');
@@ -194,7 +248,7 @@ await scenario('dark / light / system themes persist without modifying learner p
  await page.locator('input[name="ej-appearance"][value="system"]').check();
  assert.equal(await page.evaluate(()=>document.documentElement.dataset.theme),'dark');
  await page.emulateMedia({colorScheme:'light'});
- assert.equal(await page.evaluate(()=>document.documentElement.dataset.theme),'light');
+ await page.waitForFunction(()=>document.documentElement.dataset.theme==='light',{timeout:5000});
  await page.locator('input[name="ej-appearance"][value="dark"]').check();
  await page.reload({waitUntil:'load'});
  assert.equal(await page.evaluate(()=>document.documentElement.dataset.theme),'dark');

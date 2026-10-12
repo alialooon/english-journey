@@ -1,0 +1,23 @@
+/* English Journey 13.4 — sequential lesson navigation */
+.journey-layout{display:grid;grid-template-columns:minmax(205px,240px) minmax(0,1fr);gap:18px;align-items:start;margin-top:18px}
+.journey-steps{position:sticky;top:18px;display:grid;gap:10px}
+.journey-step{display:flex;align-items:center;gap:12px;min-width:0;padding:13px 12px;border:1px solid var(--stroke);border-radius:13px;background:var(--paper);color:var(--muted);opacity:.78}
+.journey-step.active{background:var(--soft);border-color:var(--accent);color:var(--ink);opacity:1;box-shadow:0 3px 13px rgba(88,77,190,.09)}
+.journey-step.completed{color:var(--ink);opacity:1}
+.journey-step-icon{width:31px;height:31px;display:grid;place-items:center;flex-shrink:0;border-radius:9px;background:var(--soft);font-weight:750;font-size:16px}
+.journey-step.completed .journey-step-icon{background:#daf5e6;color:#116d4d}
+.journey-step-copy{display:grid;gap:4px;min-width:0}
+.journey-step-copy strong{font-size:13px;line-height:1.35}
+.journey-step-copy small{font-size:11px;color:var(--muted)}
+.journey-current{min-width:0}
+.journey-current-heading{padding-bottom:13px;border-bottom:1px solid var(--stroke);margin-bottom:18px}
+.journey-current-heading p{color:var(--muted);font-size:13px;margin:8px 0 0}
+.journey-progress{margin:7px 0 0}
+.journey-footer{border-top:1px solid var(--stroke);padding:19px 0 4px;margin-top:24px;display:flex;align-items:center;gap:15px;flex-wrap:wrap}
+.journey-continue{min-width:210px;font-size:15px}
+.journey-hint{margin:0;max-width:450px}
+.journey-bonus{margin:20px 0;padding:14px;border:1px dashed var(--stroke);border-radius:12px;background:var(--paper)}
+@media(max-width:900px){.journey-layout{grid-template-columns:1fr}.journey-steps{position:static;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.journey-step{flex-direction:column;align-items:start;gap:7px}.journey-step-copy strong{font-size:12px}}
+@media(max-width:580px){.journey-steps{grid-template-columns:repeat(2,minmax(0,1fr))}.journey-current{padding:15px}.journey-footer{justify-content:stretch}.journey-continue{width:100%;min-width:0}.journey-step{padding:10px}}
+:root[data-theme="dark"] .journey-step.completed .journey-step-icon{background:#194339;color:#a2ebc7}
+:root[data-theme="dark"] .journey-step.active{box-shadow:0 3px 15px rgba(0,0,0,.21)}
