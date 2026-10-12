@@ -2,7 +2,7 @@
 const labelDays=['Основы темы','Слова и фразы','Слушаем и понимаем','Строим предложения','Ситуация из поездки','Повторение и мини-тест'];
 const STAGE_NAMES=['Теория','Словарь','Аудирование','Мини-тест','Речь и письмо'];
 const STORAGE_KEY='englishJourneyTravelV1'; // Сохраняем совместимость с первой версией.
-const APP_VERSION='13.5.0'; // Версия запущенного приложения; актуальная версия на GitHub Pages хранится в version.json.
+const APP_VERSION='13.6.0'; // Версия запущенного приложения; актуальная версия на GitHub Pages хранится в version.json.
 // Согласованная дата старта для личного плана (первый день — 12 октября 2026 года).
 const PLAN_START_YMD='2026-10-12';
 const A1_COURSE_WEEKS=25;
@@ -162,7 +162,7 @@ function openLesson(i){
 function markStep(s){
  const r=record(dayFocus),skills=ejSkills(r);
  if(!r.steps[s]&&((s===0&&!skills.grammar.passed)||(s===2&&!skills.listening.passed)||(s===3&&(!skills.reading.passed||!skills.quizPassed))||(s===4&&!skills.dialogue.passed)))return;
- if(s===4&&!r.steps[4]&&(String(r.writingPractice||'').match(/[a-z]+(?:'[a-z]+)?/gi)||[]).length<8)return;if(r.steps[s]){render();return}r.steps[s]=true;
+ if(s===4&&!r.steps[4]&&!r.writingValidated&&(String(r.writingPractice||'').match(/[a-z]+(?:'[a-z]+)?/gi)||[]).length<8)return;if(r.steps[s]){render();return}r.steps[s]=true;
  if(r.steps.every(Boolean)&&!r.doneAt){r.doneAt=new Date().toISOString();if(!store.started)store.started=r.doneAt;let day=dateYMD(new Date());store.history[day]=(store.history[day]||0)+1;message='Урок завершён и сохранён автоматически!';}
  save();if(r.doneAt && dayFocus%6===5 && !store.checkpoints[String(Math.floor(dayFocus/6))]?.passedAt){navigate('checkpoint');return}render();
 }

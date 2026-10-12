@@ -1,0 +1,17 @@
+/* English Journey 13.6 — explicitly guided conversation and Russian-to-English practice. */
+.course-meaning{padding:12px 14px;margin:12px 0 10px;border:1px solid var(--stroke);border-radius:11px;background:var(--soft);font-size:14px;line-height:1.6;color:var(--ink)}
+.course-meaning b{display:block;font-size:12px;margin-bottom:3px}
+.course-glossary{margin:9px 0 16px;padding:12px 14px;border-radius:11px;background:#eef5ff;color:#27416c;border:1px solid #c9dcf5;font-size:13px;line-height:1.7}
+.writing-lesson{margin-top:24px;padding-top:8px}
+.writing-lesson>p{line-height:1.65}
+.writing-item{border:1px solid var(--stroke);border-radius:13px;background:var(--paper);padding:16px;margin:13px 0}
+.writing-ru{display:block;font-size:16px;line-height:1.55;margin:8px 0 12px}
+.writing-inputrow{display:flex;gap:9px;align-items:stretch}
+.writing-inputrow input{min-width:0;flex:1;max-width:520px;border:1px solid var(--stroke);border-radius:10px;padding:12px 13px;background:var(--paper);color:var(--ink);font:inherit}
+.writing-inputrow input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.writing-inputrow button{white-space:nowrap}
+.writing-item .support-actions{margin:10px 0 2px}
+.writing-summary{margin:18px 0}
+:root[data-theme="dark"] .course-glossary{background:#253854;color:#d2e5ff;border-color:#4b6287}
+:root[data-theme="dark"] .writing-item{background:#19273a}
+@media(max-width:600px){.writing-inputrow{flex-direction:column;align-items:stretch}.writing-inputrow input{width:100%;max-width:none}.writing-inputrow button{width:100%}}

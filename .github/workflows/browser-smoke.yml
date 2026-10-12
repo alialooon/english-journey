@@ -31,4 +31,5 @@ jobs:
         run: |
           python3 -m http.server 8765 --bind 127.0.0.1 > /tmp/english-journey-browser-server.log 2>&1 &
           sleep 3
+          node tests/curriculum-audit.mjs
           node tests/browser-smoke.mjs

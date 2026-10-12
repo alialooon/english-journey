@@ -37,7 +37,7 @@ async function scenario(label,run){
 await scenario('startup, 100 topics, 600 lessons, optional listening',async page=>{
  assert.equal(await page.evaluate(()=>courses.length),100);
  assert.equal(await page.evaluate(()=>total),600);
- assert.equal(await page.evaluate(()=>APP_VERSION),'13.5.0');
+ assert.equal(await page.evaluate(()=>APP_VERSION),'13.6.0');
  assert.equal(await page.evaluate(()=>nextTask().type),'lesson');
  await page.locator('[data-open="0"]').first().click();
  const r=await page.evaluate(()=>({steps:record(0).steps,blocked:nextTask().type}));
@@ -213,7 +213,10 @@ await scenario('lesson follows words -> theory -> quiz -> dialogue, keeps progre
   const correct=await page.evaluate(()=>{const s=ejSkills(record(0)).dialogue,branch=skillItem().dialogues[Number.isInteger(s.path)?s.path:dayFocus%2];return branch.turns[Number(s.turn)||0].correct;});
   await page.locator('[data-dialog-answer="'+correct+'"]').click();
  }
- await page.locator('#lesson-writing').fill('I would like to ask for information about my hotel reservation please');
+ for(const item of await page.evaluate(()=>EJWritingLesson.prompts())){
+  await page.locator('[data-writing-answer="'+item.id+'"]').fill(item.en);
+  await page.locator('[data-writing-check="'+item.id+'"]').click();
+ }
  await page.locator('[data-mark="4"]').click();
  assert.equal(await page.evaluate(()=>!!record(0).doneAt),true);
  await page.locator('[data-journey-next]').click();
@@ -222,6 +225,58 @@ await scenario('lesson follows words -> theory -> quiz -> dialogue, keeps progre
  assert.equal(await page.evaluate(()=>!!record(0).doneAt),true,'Completed prior lesson remains saved');
 });
 
+
+
+await scenario('A0: Russian prompts replace arbitrary text, spell phrase is explained before answering',async page=>{
+ await page.locator('[data-open="0"]').first().click();
+ await page.evaluate(()=>{
+  const r=record(0);r.steps[1]=true;r.steps[0]=true;r.steps[3]=true;r.flowStep=3;save();render();
+ });
+ assert.equal(await page.locator('#lesson-writing').count(),0,'Old meaningless free-text input must be gone');
+ const translated=await page.locator('.writing-item').count();
+ assert.equal(translated,4,'Exactly three prior vocabulary prompts plus one taught grammar phrase');
+ assert.match(await page.locator('.writing-item').first().innerText(),/Переведи на английский: «привет»/);
+ assert.equal(await page.locator('.writing-item .writing-ru').nth(3).innerText(),
+  'Переведи на английский: «Ты из Испании?»');
+ await page.locator('[data-dialog-path="1"]').click();
+ assert.match(await page.locator('.course-meaning').innerText(),/Тебя зовут Алек/);
+ const first=await page.evaluate(()=>skillItem().dialogues[1].turns[0].correct);
+ await page.locator('[data-dialog-answer="'+first+'"]').click();
+ assert.match(await page.locator('.course-meaning').innerText(),/произнести своё имя по буквам/);
+ assert.match(await page.locator('.course-glossary').innerText(),/spell.*буквам/);
+ const second=await page.evaluate(()=>skillItem().dialogues[1].turns[1].correct);
+ await page.locator('[data-dialog-answer="'+second+'"]').click();
+ await page.locator('[data-writing-answer="0"]').fill('country friend thank you please hello');
+ await page.locator('[data-writing-check="0"]').click();
+ assert.equal(await page.evaluate(()=>Boolean(record(0).writingValidated)),false);
+ assert.equal(await page.locator('[data-mark="4"]').isDisabled(),true);
+ await page.locator('[data-writing-answer="0"]').fill('hello');
+ await page.locator('[data-writing-check="0"]').click();
+ const others=await page.evaluate(()=>EJWritingLesson.prompts().slice(1));
+ for(const item of others){
+  await page.locator('[data-writing-answer="'+item.id+'"]').fill(item.en);
+  await page.locator('[data-writing-check="'+item.id+'"]').click();
+ }
+ assert.equal(await page.evaluate(()=>Boolean(record(0).writingValidated)),true);
+ assert.equal(await page.evaluate(()=>Boolean(record(0).steps[4])),true);
+});
+await scenario('writing hint and skip create a mandatory different translation review',async page=>{
+ await page.locator('[data-open="0"]').first().click();
+ await page.evaluate(()=>{const r=record(0);r.steps[1]=true;r.steps[0]=true;r.steps[3]=true;r.flowStep=3;save();render()});
+ const firstPrompt=await page.evaluate(()=>EJWritingLesson.prompts()[0]);
+ await page.locator('.writing-item').first().locator('.support-hint').click();
+ assert.equal(await page.evaluate(()=>EnglishJourneySupport.pending().length),1);
+ await page.locator('.writing-item').first().locator('.support-skip').click();
+ assert.equal(await page.evaluate(()=>record(0).writingAnswers[0].skipped),true);
+ const review=await page.evaluate(()=>{
+  const debt=EnglishJourneySupport.pending()[0],task=EnglishJourneySupport.reviewTask();
+  return {debt,task};
+ });
+ assert.equal(review.debt.kind,'writing');
+ assert.notEqual(review.task.expected,firstPrompt.en,'Different vocabulary word required for later review');
+ assert.match(review.task.body,/Переведи на английский/);
+ assert.equal(await page.evaluate(()=>Boolean(record(0).steps[4])),false,'Skip cannot finish stage without other responses and dialogue');
+});
 
 await scenario('hint and skip defer a word, next lesson demands different same-topic answer',async page=>{
  await page.locator('[data-open="0"]').first().click();
@@ -257,7 +312,10 @@ await scenario('hint and skip defer a word, next lesson demands different same-t
   const correct=await page.evaluate(()=>{const d=ejSkills(record(0)).dialogue,b=skillItem().dialogues[Number.isInteger(d.path)?d.path:dayFocus%2];return b.turns[Number(d.turn)||0].correct});
   await page.locator('[data-dialog-answer="'+correct+'"]').click();
  }
- await page.locator('#lesson-writing').fill('I would like to ask for information about my hotel reservation please');
+ for(const item of await page.evaluate(()=>EJWritingLesson.prompts())){
+  await page.locator('[data-writing-answer="'+item.id+'"]').fill(item.en);
+  await page.locator('[data-writing-check="'+item.id+'"]').click();
+ }
  await page.locator('[data-mark="4"]').click();
  assert.equal(await page.evaluate(()=>Boolean(record(0).doneAt)),true);
  await page.locator('[data-journey-next]').click();

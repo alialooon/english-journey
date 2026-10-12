@@ -34,7 +34,7 @@ function noteHint(kind,ref,node){
   quiz:()=> 'Вернись к формуле этой темы: '+esc(u.rule||u.grammar)+'. Выбери вариант, который лучше соответствует контексту.',
   reading:()=> 'Вернись к тексту и найди именно информацию, о которой спрашивают. Не ориентируйся только на знакомые слова.',
   dialogue:()=> 'Представь, что ответ прозвучит вслух: должен ли он отвечать на вопрос или вежливо уточнять ситуацию?',
-  writing:()=>{const v=(VOCAB_BANK[debt.week]||[]).slice(0,2);return 'Начни с одной короткой фразы. Затем добавь подробность по теме «'+esc(u.title)+'». Используй, если подходят: '+v.map(x=>esc(x.en)).join(' / ')+'.';}
+  writing:()=>{const task=window.EJWritingLesson?.prompts().find(x=>x.id===debt.ref);return task?(task.kind==='grammar'?'Используй правило: '+esc(u.rule)+'. Сначала вспомни подлежащее и глагол.':'Это выражение было в карточках слов текущего урока. Вспомни его начало: «'+esc(task.en.slice(0,1))+'…».'):'Используй уже изученные слова и строй осмысленные фразы.';}
  };
  save();
  const tip=document.createElement('p');tip.className='support-tip';tip.setAttribute('role','status');
@@ -99,7 +99,8 @@ function skipOne(kind,ref){
   save();render();return;
  }
  if(kind==='writing'){
-  doneDeferred(4);
+  if(window.EJWritingLesson?.skip&&String(ref)!=='text')window.EJWritingLesson.skip(ref);
+  else doneDeferred(4);
  }
 }
 const originalFinishQuiz=finishQuiz;
@@ -145,6 +146,11 @@ function bindActions(){
   }
   const dialog=group.querySelector('[data-dialog-answer]');
   if(dialog){const s=ejSkills(record(dayFocus)).dialogue;add(group,'dialogue',String(Number(s.turn)||0));}
+ });
+ work.querySelectorAll('[data-writing-check]').forEach(btn=>{
+  const ref=btn.dataset.writingCheck;
+  const block=btn.closest('.writing-item');
+  if(block&&!record(dayFocus).steps[4])add(block,'writing',ref);
  });
  const writing=work.querySelector('#lesson-writing');
  if(writing&&!record(dayFocus).steps[4])add(writing,'writing','text');
@@ -198,6 +204,21 @@ function question(debt){
    body:'Переведи: «'+esc(row.ru)+'»',expected:row.en,kind:'grammar'};
  }
  if(debt.kind==='writing'){
+  const original=Number(debt.ref),models=s.grammar||[];
+  if(Number.isInteger(original)&&original>=0&&original<=3){
+   if(original<3){
+    const studied=vocabForLesson(debt.lesson);
+    const ignored=studied[original]?.id||'';
+    const alternatives=studied.filter(x=>x.id!==ignored);
+    const row=alternatives[offset%alternatives.length];
+    return {mode:'text',label:'Повтори слово из той же темы, но не исходное',
+      body:'Переведи на английский: «'+esc(row.ru)+'»',expected:row.en,kind:'vocabulary'};
+   }
+   const previous=models[(debt.lesson%6+2)%models.length];
+   const row=selectDifferent(models,x=>x.en,offset,previous?.en);
+   return {mode:'text',label:'Переведи другое предложение по тому же правилу',
+    body:'Переведи на английский: «'+esc(row.ru)+'»',expected:row.en,kind:'grammar'};
+  }
   const a=v.length?v[offset%v.length]:null;
   const b=v.length>1?v[(offset+3)%v.length]:null;
   return {mode:'writing',label:'Напиши новую самостоятельную фразу',
@@ -205,7 +226,7 @@ function question(debt){
    (a?' выражение «'+esc(a.en)+'»':' лексику урока')+(b?' и «'+esc(b.en)+'»':'')+'.',
    terms:[a?.en,b?.en].filter(Boolean)};
  }
- if(debt.kind==='quiz'){
+  if(debt.kind==='quiz'){
   const list=u.quiz||[],original=qlist(u,debt.lesson%6,record(debt.lesson).profile)[Number(debt.ref)];
   const row=selectDifferent(list,x=>x[0],offset,original?.[0]);
   return choices(row[0],row[1],row[2],seed+debt.revision,'Грамматика и лексика: новая ситуация');
