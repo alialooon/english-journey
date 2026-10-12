@@ -1,0 +1,11 @@
+# English Journey: static web app, no paid server and no build step.
+[build]
+  publish = "."
+
+# Prevent outdated HTML/JS being pinned by browser caches after auto-deploy.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
