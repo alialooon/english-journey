@@ -47,7 +47,7 @@ lesson=function(){
    (last?(dayFocus%6===5?'Перейти к зачёту темы →':'Следующий урок →'):'Следующее задание →')+
    '</button>';
  }else{
-  action='<button class="primary dark journey-continue" disabled aria-disabled="true">Следующее задание →</button>'+
+  action='<button class="primary dark journey-continue" data-journey-next="1" disabled aria-disabled="true">Следующее задание →</button>'+
    '<p class="tiny journey-hint">Чтобы продолжить, выполни задания текущего шага. Простое нажатие кнопки без проверки не засчитывается.</p>';
  }
  const nextLabel=finished?'Урок выполнен ✓':completeCount+' из 4 шагов выполнено';
