@@ -11,7 +11,8 @@ const VOCAB_BANK = courses.map((lesson, week) => {
   return true;
  }).map(([en, ru]) => ({id:en.toLocaleLowerCase('en').trim(),en,ru,week}));
 });
-const VOCAB_MAP = new Map(VOCAB_BANK.flat().map(item=>[item.id,item]));
+const VOCAB_MAP = new Map();
+for(const item of VOCAB_BANK.flat())if(!VOCAB_MAP.has(item.id))VOCAB_MAP.set(item.id,item);
 function ensureVocabulary(){
  if(!store.vocabulary || typeof store.vocabulary!=='object' || Array.isArray(store.vocabulary)) store.vocabulary={};
  if(!store.vocabDaily || typeof store.vocabDaily!=='object') store.vocabDaily={};
@@ -19,7 +20,7 @@ function ensureVocabulary(){
 function vocToday(){return dateYMD(new Date())}
 function vocNext(days){return dateYMD(plusDays(new Date(),days))}
 function vocText(s){return String(s||'').trim().toLocaleLowerCase('en').replace(/[’`]/g,"'").replace(/[.,!?]/g,'').replace(/\s+/g,' ')}
-function vocabForLesson(day){const week=Math.floor(day/6),offset=(day%6)*8;return (VOCAB_BANK[week]||[]).slice(offset,offset+8)}
+function vocabForLesson(day){const week=Math.floor(day/6),offset=(day%6)*8,bank=VOCAB_BANK[week]||[];return bank.length?Array.from({length:Math.min(8,bank.length)},(_,i)=>bank[(offset+i)%bank.length]):[];}
 function vocabDue(){ensureVocabulary();const now=vocToday();return Object.entries(store.vocabulary).filter(([id,s])=>VOCAB_MAP.has(id)&&s?.introducedAt&&s.due&&s.due<=now&&s.reviewedOn!==now).map(([id])=>VOCAB_MAP.get(id)).sort((a,b)=>{const da=store.vocabulary[a.id].due,db=store.vocabulary[b.id].due;return da.localeCompare(db)||a.week-b.week})}
 function vocabStats(){ensureVocabulary();const recs=Object.values(store.vocabulary).filter(x=>x&&x.introducedAt);return {introduced:recs.length,mastered:recs.filter(x=>x.step>=4).length,needsWork:recs.filter(x=>x.lapses>0&&x.step<4).length,due:vocabDue().length,all:VOCAB_MAP.size}}
 function vocabProgressPreview(){const s=vocabStats();return '<div class="vocab-summary"><div><small>Начали изучать</small><strong>'+s.introduced+'</strong></div><div><small>Уверенно вспомнили с интервалами</small><strong>'+s.mastered+'</strong></div><div><small>Повторить сегодня</small><strong>'+s.due+'</strong></div><button class="outline" data-page="vocabulary">Открыть словарь →</button></div>'}
@@ -65,7 +66,7 @@ function vocabularyDashboard(){
  '<div class="panel"><h3>Повторение на сегодня</h3><p>Новые слова открываются в уроках. Здесь нужно вспомнить уже встречавшиеся выражения <b>без подсказки</b>. Успешные ответы увеличивают интервалы; ошибка назначает повторение на завтра.</p>'+ 
  (feedback?'<div class="result '+(feedback.good?'':'error')+'">'+(feedback.good?'Верно!':'Ошибка, повтори:')+' '+esc(feedback.correct)+'</div>':'')+
  (next?'<div class="vocab-practice"><div class="tiny">Осталось на сегодня: '+due.length+'</div><div class="vocab-prompt">'+esc(next.ru)+'</div><input id="vocab-review-answer" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="Английский вариант по памяти" aria-label="Слово на английском"><button class="primary dark" data-vocab-review="'+esc(next.id)+'">Проверить и сохранить</button></div>':'<div class="donebanner">На сегодня запланированных повторений больше нет. Можно продолжать уроки.</div>')+'</div>'+ 
- '<div class="panel"><h3>Что значат показатели</h3><p class="tiny">В словарь входят отдельные слова и полезные выражения. «Освоено» считается только после нескольких правильных ответов в разные дни, а не после просмотра карточки. Это оценка словарной памяти, не официальный CEFR.</p><p class="tiny">В текущем банке '+s.all+' уникальных слов и выражений. Программа A2–B1 и задания для полноценной проверки аудирования и говорения ещё требуют дальнейшего расширения.</p></div>';
+ '<div class="panel"><h3>Что значат показатели</h3><p class="tiny">В словарь входят отдельные слова и полезные выражения. «Освоено» считается только после нескольких правильных ответов в разные дни, а не после просмотра карточки. Это оценка словарной памяти, не официальный CEFR.</p><p class="tiny">В текущем банке '+s.all+' уникальных слов и выражений. Программа A1 содержит 25 тем; A2 и B1 ещё требуют авторских уроков и проверок говорения и письма.</p></div>';
 }
 function vocabularyHandlers(){
  document.querySelectorAll('[data-vocab-recall]').forEach(b=>b.onclick=()=>{record(dayFocus).vocabRecall=b.dataset.vocabRecall;record(dayFocus).vocabLastError=null;save();render();document.getElementById('vocab-answer')?.focus()});
