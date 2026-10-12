@@ -2,7 +2,7 @@
 const labelDays=['Основы темы','Слова и фразы','Слушаем и понимаем','Строим предложения','Ситуация из поездки','Повторение и мини-тест'];
 const STAGE_NAMES=['Теория','Словарь','Аудирование','Мини-тест','Речь и письмо'];
 const STORAGE_KEY='englishJourneyTravelV1'; // Сохраняем совместимость с первой версией.
-const APP_VERSION='7.0.0'; // Версия запущенного приложения; версия на Netlify хранится в version.json.
+const APP_VERSION='8.0.0'; // Версия запущенного приложения; версия на Netlify хранится в version.json.
 // Согласованная дата старта для личного плана (первый день — 12 октября 2026 года).
 const PLAN_START_YMD='2026-10-12';
 const total=courses.length*6;
@@ -142,6 +142,7 @@ function record(i){
  if(!r.quizDraft||typeof r.quizDraft!=='object')r.quizDraft={};
  if(!Number.isFinite(r.activeSeconds))r.activeSeconds=0;
  if(!Number.isInteger(r.quizAttempts))r.quizAttempts=0;
+ ejSkills(r);
  return r;
 }
 function doneCount(){return Object.values(store.logs).filter(x=>x.doneAt).length}
@@ -157,7 +158,9 @@ function openLesson(i){
  dayFocus=i;stage=0;if(!store.started)store.started=new Date().toISOString();record(dayFocus);save();activeAt=performance.now();lastActivity=performance.now();navigate('lesson');
 }
 function markStep(s){
- const r=record(dayFocus);if(s===4&&!r.steps[4]&&(String(r.writingPractice||'').match(/[a-z]+(?:'[a-z]+)?/gi)||[]).length<8)return;if(r.steps[s]){render();return}r.steps[s]=true;
+ const r=record(dayFocus),skills=ejSkills(r);
+ if(!r.steps[s]&&((s===0&&!skills.grammar.passed)||(s===2&&!skills.listening.passed)||(s===3&&(!skills.reading.passed||!skills.quizPassed))||(s===4&&!skills.dialogue.passed)))return;
+ if(s===4&&!r.steps[4]&&(String(r.writingPractice||'').match(/[a-z]+(?:'[a-z]+)?/gi)||[]).length<8)return;if(r.steps[s]){render();return}r.steps[s]=true;
  if(r.steps.every(Boolean)&&!r.doneAt){r.doneAt=new Date().toISOString();if(!store.started)store.started=r.doneAt;let day=dateYMD(new Date());store.history[day]=(store.history[day]||0)+1;message='Урок завершён и сохранён автоматически!';}
  save();if(r.doneAt && dayFocus%6===5 && !store.checkpoints[String(Math.floor(dayFocus/6))]?.passedAt){navigate('checkpoint');return}render();
 }
@@ -172,7 +175,7 @@ function pulse(){
 }
 setInterval(pulse,1000);window.addEventListener('pagehide',save);document.addEventListener('visibilitychange',()=>{activeAt=performance.now();if(document.visibilityState==='visible')lastActivity=performance.now()});
 function header(){document.getElementById('greet').textContent=todayLabel();document.getElementById('top-chip').textContent=`✦ ${courses[Math.floor(nextIndex()/6)].level} · ${doneCount()} из ${total}`;document.querySelectorAll('[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===page))}
-function render(){header();document.getElementById('root').innerHTML=page==='home'?home():page==='lesson'?lesson():page==='course'?course():page==='roadmap'?roadmap():page==='analytics'?analytics():page==='vocabulary'?vocabularyDashboard():page==='checkpoint'?checkpointPage():page==='exam'?examPage():page==='assessments'?assessmentsPage():settings();wire();vocabularyHandlers()}
+function render(){header();document.getElementById('root').innerHTML=page==='home'?home():page==='lesson'?lesson():page==='course'?course():page==='roadmap'?roadmap():page==='analytics'?analytics():page==='vocabulary'?vocabularyDashboard():page==='checkpoint'?checkpointPage():page==='exam'?examPage():page==='assessments'?assessmentsPage():settings();wire();vocabularyHandlers();skillsHandlers()}
 function modeChip(mode){return `<span class="pill">Режим: ${PROFILES[mode].title}</span>`}
 function home(){
  const n=nextIndex(),unit=courses[Math.floor(n/6)],done=doneCount(),week=Math.floor(n/6),w=weekStats(Math.max(0,week-1)),mode=profileFor(n);
@@ -181,6 +184,7 @@ function home(){
  <div class="stats"><div class="stat"><div class="muted">Уроков завершено</div><strong>${done}<span style="font-size:15px;color:#acb5c9"> / ${total}</span></strong><small>Первый модуль · A0–A1</small></div><div class="stat"><div class="muted">Серия занятий</div><strong>${streak()} 🔥</strong><small>Дней подряд</small></div><div class="stat"><div class="muted">Текущий режим</div><strong style="font-size:19px">${PROFILES[mode].title}</strong><small>${store.preferences.adaptive?'Адаптация включена':'Адаптация выключена'}</small></div></div>
  ${homeNextSection(n,unit,week,mode)}
  ${vocabProgressPreview()}
+ ${skillsOverview()}
  <div class="section-head"><h2>Когда достигнешь A1, A2 и B1</h2><button class="outline" data-page="roadmap">Все прогнозы →</button></div>
  <div class="eta-grid">${LEVEL_GOALS.map(g=>goalCard(g,true)).join('')}</div>
  <p class="tiny eta-note">Старт плана: ${ruDate(planStart())}. Исходные даты фиксированы; персональные меняются после уроков. A2/B1 — предварительные сроки, так как курсы пока не добавлены.</p>
@@ -197,24 +201,27 @@ function lesson(){
 }
 function nextButton(i){return `<button class="outline" data-stage="${i}">Следующий шаг →</button>`}
 function theoryPane(u,day,r){let alphabet=dayFocus===0?`<div class="ex"><b>Английский алфавит — 26 букв</b><span style="font-size:16px;line-height:2">A B C D E F G H I J K L M N O P Q R S T U V W X Y Z</span><div class="tiny">Произнеси буквы вслух и попробуй продиктовать своё имя.</div></div>`:'';
- return `<div class="split"><span class="pill">Шаг 1 · ориентир 8 мин</span>${r.steps[0]?'✅ Готово':''}</div><h3>${day===0?'Знакомимся с темой':day===5?'Вспоминаем главное':labelDays[day]+': основное правило'}</h3><p>${esc(u.grammar)}</p><p>${esc(u.theory)}</p><div class="notes"><b>Формула:</b> ${esc(u.rule)}</div>${alphabet}<h4>Примеры</h4>${u.examples.map(pair=>`<div class="ex"><b>${esc(pair[0])}</b><span>${esc(pair[1])}</span></div>`).join('')}<p class="disclaimer">Прочитай правило, проговори примеры. Знакомое можно пройти быстрее — выдерживать 8 минут не требуется.</p><div class="split"><button class="primary dark" data-mark="0">${r.steps[0]?'✓ Прочитано':'Я изучил(а) правило ✓'}</button>${r.steps[0]?nextButton(1):''}</div>`;
+ return `<div class="split"><span class="pill">Шаг 1 · ориентир 8 мин</span>${r.steps[0]?'✅ Готово':''}</div><h3>${day===0?'Знакомимся с темой':day===5?'Вспоминаем главное':labelDays[day]+': основное правило'}</h3><p>${esc(u.grammar)}</p><p>${esc(u.theory)}</p><div class="notes"><b>Формула:</b> ${esc(u.rule)}</div>${alphabet}<h4>Примеры</h4>${u.examples.map(pair=>`<div class="ex"><b>${esc(pair[0])}</b><span>${esc(pair[1])}</span></div>`).join('')}<p class="disclaimer">Прочитай правило и затем составь две фразы по памяти. Письменные предложения проверяются на совпадение с заданной моделью.</p>${skillGrammarPane(r)}<div class="split"><button class="primary dark" data-mark="0" ${!r.steps[0]&&!ejSkills(r).grammar.passed?'disabled':''}>${r.steps[0]?'✓ Прочитано':'Я изучил(а) правило ✓'}</button>${r.steps[0]?nextButton(1):''}</div>`;
 }
 function vocabPane(u,day,r){return vocabularyLessonPane(u,day,r,dayFocus)}
-function listenPane(u,day,r){const phrases=[u.dialog[day%3],u.dialog[(day+1)%3]],heard=new Set(r.listened);
- return `<div class="split"><span class="pill">Шаг 3 · ориентир 8 мин</span>${r.steps[2]?'✅ Готово':''}</div><h3>Слушаем и повторяем</h3><p>Прослушай обе реплики и повтори их вслух. Прослушивание отметится после завершения озвучивания браузером. Если голос не работает, используй внешний урок ниже.</p><div class="dialogue">${phrases.map((p,i)=>`<div class="line"><div><span class="phrase">${esc(p[0])}</span><span class="translation">${esc(p[1])}</span></div><button class="sound" data-say="${i}">${heard.has(i)?'✓ ':'▶ '}Слушать</button></div>`).join('')}</div><p class="disclaimer">Озвучивание зависит от голосов, установленных в браузере. Это синтез речи, не запись носителя.</p><p>Дополнительные бесплатные материалы: <a target="_blank" rel="noopener noreferrer" href="${u.resource}">открыть урок ↗</a></p><button class="outline" data-listen-manual="1">Я прослушал(а) внешний урок и повторил(а) фразы ✓</button>${r.steps[2]?`<div class="result">Аудирование готово! ${nextButton(3)}</div>`:''}`;
-}
+function listenPane(u,day,r){return skillAudioPane(r)}
+
 function qlist(u,day,profile){const start=(day*2)%u.quiz.length;return Array.from({length:PROFILES[profile].questions},(_,i)=>u.quiz[(start+i)%u.quiz.length])}
 function scoreDraft(questions,r){return questions.reduce((s,q,i)=>s+(Number(r.quizDraft[i])===q[2]?1:0),0)}
-function quizPane(u,day,r){const questions=qlist(u,day,r.profile),keys=Object.keys(r.quizDraft),answered=keys.length,score=scoreDraft(questions,r),need=Math.ceil(questions.length*0.72);
- return `<div class="split"><span class="pill">Шаг 4 · ориентир 9 мин</span>${r.steps[3]?'✅ Зачёт':''}</div><h3>Мини-тест без подсказок</h3><p>${questions.length} вопросов. Для зачёта нужно ${need} правильных ответов. Результат первой попытки сохраняется для настройки сложности следующей недели.</p>
+function quizPane(u,day,r){const questions=qlist(u,day,r.profile),keys=Object.keys(r.quizDraft),answered=keys.length,score=scoreDraft(questions,r),need=Math.ceil(questions.length*0.72),skills=ejSkills(r);
+ return `<div class="split"><span class="pill">Шаг 4 · ориентир 10 мин</span>${r.steps[3]?'✅ Зачёт':''}</div><h3>Грамматика и слова: мини-тест</h3><p>Сначала реши ${questions.length} вопросов (${need} правильных для зачёта). Затем прочитай реальный бытовой текст и ответь на вопросы к нему. Оба результата обязательны.</p>
  ${questions.map((q,i)=>{let chosen=r.quizDraft[i];return `<div class="questiongroup"><div class="qcounter">Вопрос ${i+1} из ${questions.length}</div><div class="question">${esc(q[0])}</div>${q[1].map((opt,j)=>`<button class="choice ${chosen!==undefined&&j===q[2]?'correct':chosen===j&&j!==q[2]?'incorrect':''}" data-answer="${i}:${j}" ${chosen!==undefined?'disabled':''}>${String.fromCharCode(65+j)}. ${esc(opt)} ${chosen!==undefined&&j===q[2]?'✓':''}</button>`).join('')}</div>`}).join('')}
- ${answered===questions.length?`<div class="result ${score<need?'error':''}">Результат попытки: ${score}/${questions.length}. ${score>=need?'Зачёт!':'Повтори объяснение и попробуй ещё раз.'}</div>${score<need?`<button class="outline" data-resetquiz="1">Повторить тест ↻</button>`:nextButton(4)}`:`<div class="tiny">Ответов: ${answered}/${questions.length}</div>`}${r.quizAttempts?`<p class="tiny">Завершённых попыток: ${r.quizAttempts} · точность первой: ${pct(r.firstAccuracy||0,1)}%</p>`:''}`;
+ ${answered===questions.length?`<div class="result ${score<need?'error':''}">Результат: ${score}/${questions.length}. ${score>=need?'Мини-тест зачтён.':'Повтори правило.'}</div>${score<need?'<button class="outline" data-resetquiz="1">Повторить мини-тест ↻</button>':''}`:`<div class="tiny">Ответов: ${answered}/${questions.length}</div>`}
+ ${skillReadingPane(r)}
+ ${skills.quizPassed&&skills.reading.passed?`<div class="donebanner">✓ Оба блока зачтены. ${nextButton(4)}</div>`:''}
+ ${r.quizAttempts?`<p class="tiny">Попыток теста: ${r.quizAttempts} · точность первой: ${pct(r.firstAccuracy||0,1)}%</p>`:''}`;
 }
+
 function speakingPane(u,day,r){
  const p=u.dialog[(day+2)%3],text=String(r.writingPractice||''),enWords=text.match(/[a-z]+(?:'[a-z]+)?/gi)||[];
  const complete=enWords.length>=8;
  const lines=u.dialog.map(x=>x[0]).join(' ');
- return `<div class="split"><span class="pill">Шаг 5 · ориентир 8 мин</span>${r.steps[4]?'✅ Готово':''}</div><h3>Читаем, пишем и говорим</h3><p>Прочитай мини-диалог и попробуй передать смысл своими словами. Затем произнеси собственный ответ вслух и напиши минимум 8 английских слов по теме урока.</p><div class="ex"><b>Мини-диалог</b><span>${esc(lines)}</span></div><div class="notes"><b>Фраза для практики:</b> ${esc(p[0])} — ${esc(p[1])}</div><textarea class="writing-practice" id="lesson-writing" rows="3" placeholder="Напиши свой ответ на английском..." ${r.steps[4]?'readonly':''}>${esc(text)}</textarea><div class="tiny">Написано ${enWords.length} английских слов из 8. Текст сохраняется; автоматической проверки смысла и грамматики пока нет.</div><p class="disclaimer">Произнеси ответ вслух. Приложение не распознаёт речь и не оценивает произношение. Подтверди упражнение самостоятельно.</p><button class="primary dark" data-mark="4" ${!complete&&!r.steps[4]?'disabled':''}>${r.steps[4]?'✓ Чтение, письмо и речь выполнены':'Я написал(а) текст и проговорил(а) ответ ✓'}</button>${r.steps[4]&&r.steps.every(Boolean)?`<div class="donebanner">🎉 Урок завершён за ${duration(r.activeSeconds)}. ${dayFocus+1<total?`<button class="outline" ${dayFocus%6===5?'data-page="checkpoint"':`data-open="${dayFocus+1}"`}>${dayFocus%6===5?'Проверка темы →':'Следующий урок →'}</button>`:''}</div>`:''}`;
+ return `<div class="split"><span class="pill">Шаг 5 · ориентир 8 мин</span>${r.steps[4]?'✅ Готово':''}</div><h3>Читаем, пишем и говорим</h3><p>Прочитай мини-диалог и попробуй передать смысл своими словами. Затем произнеси собственный ответ вслух и напиши минимум 8 английских слов по теме урока.</p><div class="ex"><b>Мини-диалог</b><span>${esc(lines)}</span></div><div class="notes"><b>Фраза для практики:</b> ${esc(p[0])} — ${esc(p[1])}</div>${skillDialogPane(r)}<textarea class="writing-practice" id="lesson-writing" rows="3" placeholder="Напиши свой ответ на английском..." ${r.steps[4]?'readonly':''}>${esc(text)}</textarea><div class="tiny">Написано ${enWords.length} английских слов из 8. Текст сохраняется; автоматической проверки смысла и грамматики пока нет.</div><p class="disclaimer">Произнеси ответ вслух. Приложение не распознаёт речь и не оценивает произношение. Подтверди упражнение самостоятельно.</p><button class="primary dark" data-mark="4" ${(!complete||!ejSkills(r).dialogue.passed)&&!r.steps[4]?'disabled':''}>${r.steps[4]?'✓ Чтение, письмо и речь выполнены':'Я написал(а) текст и проговорил(а) ответ ✓'}</button>${r.steps[4]&&r.steps.every(Boolean)?`<div class="donebanner">🎉 Урок завершён за ${duration(r.activeSeconds)}. ${dayFocus+1<total?`<button class="outline" ${dayFocus%6===5?'data-page="checkpoint"':`data-open="${dayFocus+1}"`}>${dayFocus%6===5?'Проверка темы →':'Следующий урок →'}</button>`:''}</div>`:''}`;
 }
 function course(){return `<div class="lesson-head"><div><span class="pill">72 занятия · 12 недель</span><h2>Твоя учебная программа</h2><p>Уроки можно проходить быстрее календаря — ограничений по дням нет</p></div><button class="outline" data-open="${nextIndex()}">Продолжить →</button></div><div class="section-head"><h2>Основы A0–A1</h2></div><div class="weeks">${courses.map((w,i)=>{let count=Array.from({length:6},(_,j)=>i*6+j).filter(n=>existingRecord(n)?.doneAt).length;let mode=profileFor(i*6);return `<button class="week" data-open="${i*6}" ${i*6>nextIndex()?'disabled title="Сначала сдай предыдущие темы"':''}><span class="mini">${w.level} · Неделя ${i+1} · ${PROFILES[mode].title}</span><h3>${esc(w.title)}</h3><p>${esc(w.grammar)}</p><div class="progress"><div style="width:${pct(count,6)}%"></div></div><small class="tiny">${count}/6 уроков · ${store.checkpoints[String(i)]?.passedAt?'✓ Тема зачтена':count===6?'🔒 Нужен тест по теме':'Тест после 6 уроков'}</small></button>`}).join('')}</div><p class="footerhint">Доступны первые 72 занятия начального этапа. Для реального A1 необходимы также дополнительные часы, разнообразные тексты, аудио с носителями и оценка устной и письменной речи. A2 и B1 пока в разработке.</p>`}
 function roadmap(){
@@ -234,7 +241,7 @@ function analytics(){let weeks=courses.map((x,i)=>({...weekStats(i),week:i}));co
  <div class="section-head"><h2>Отчёты по неделям</h2></div><div class="report-grid">${weeks.filter(x=>x.count>0).map(x=>`<div class="report"><div class="split"><b>Неделя ${x.week+1}</b><span class="pill">${x.count}/6</span></div><div class="metric">Точность первой попытки: <b>${x.avgAccuracy===null?'нет данных':pct(x.avgAccuracy,1)+'%'}</b></div><div class="metric">Среднее активное время: <b>${x.avgSeconds===null?'нет данных':duration(x.avgSeconds)}</b></div><div class="metric">Повторные попытки: <b>${x.retries}</b></div>${x.count===6&&x.week+1<courses.length?`<div class="notes">Следующая неделя: ${PROFILES[pickProfile(x.week+1)].title}</div>`:''}</div>`).join('')||'<div class="empty">Здесь появятся результаты после первых завершённых уроков.</div>'}</div>`;
 }
 function settings(){return `<div class="lesson-head"><div><span class="pill">Данные и управление</span><h2>Настройки</h2><p>Здесь можно скачать резервную копию и управлять адаптацией.</p></div></div><div class="panel"><h3>Обновления без скачивания</h3><p class="muted" style="font-size:14px">Версия приложения: <b>${APP_VERSION}</b>. Новые версии публикуются на том же адресе через GitHub Pages после обновления репозитория. Во время занятия обновление не прерывает работу: можно закончить урок и обновить страницу.</p><div class="toolbar"><button class="outline" id="check-update">↻ Проверить обновления</button><span class="tiny" id="update-status">Проверим версию на сайте.</span></div><hr style="border:0;border-top:1px solid var(--stroke);margin:20px 0"><h3>Как измеряется прогресс</h3><p class="tiny">72 готовых урока — начальный блок, а не полный сертифицированный курс A1. Прогнозы по A1, A2, B1 основаны на приблизительных объёмах обучения; до проверки устной речи, аудирования, чтения и письма они не подтверждают уровень CEFR.</p><h3>Адаптация программы</h3><label class="switchline"><input id="adaptive" type="checkbox" ${store.preferences.adaptive?'checked':''}><span><b>Автоматически подстраивать следующие недели</b><br><span class="tiny">Точность важнее скорости; новую нагрузку приложение назначает после завершения учебной недели. Уже начатые уроки сохраняют свой режим.</span></span></label><p class="tiny">Ориентир одного урока — около 40 минут, но завершение не зависит от таймера. Можно проходить больше одного урока за день. Плановый старт: ${ruDate(planStart())}; первоначальные даты рубежей сохраняются от него. Дата начала плана фиксирована и не зависит от числа пройденных уроков.</p><hr style="border:0;border-top:1px solid var(--stroke);margin:20px 0"><h3>Резервное копирование</h3><p class="muted" style="font-size:14px">Прогресс хранится на этом устройстве в локальном хранилище браузера. Синхронизации аккаунта нет. При очистке данных браузера прогресс может исчезнуть.</p><div class="toolbar"><button class="primary dark" id="export">↓ Скачать прогресс (.json)</button><label class="outline" style="cursor:pointer;display:inline-flex">↑ Восстановить из файла<input id="import" type="file" accept=".json,application/json" style="display:none"></label></div><hr style="border:0;border-top:1px solid var(--stroke);margin:20px 0"><button class="outline" id="reset" style="color:#bd5364">Сбросить прогресс</button></div>`}
-function finishQuiz(r,u,d){const qs=qlist(u,d,r.profile),score=scoreDraft(qs,r),accuracy=score/qs.length,need=Math.ceil(qs.length*.72);r.quizAttempts++;if(!Number.isFinite(r.firstAccuracy))r.firstAccuracy=accuracy;r.bestAccuracy=Math.max(r.bestAccuracy||0,accuracy);save();if(score>=need)markStep(3);else render()}
+function finishQuiz(r,u,d){const qs=qlist(u,d,r.profile),score=scoreDraft(qs,r),accuracy=score/qs.length,need=Math.ceil(qs.length*.72);r.quizAttempts++;if(!Number.isFinite(r.firstAccuracy))r.firstAccuracy=accuracy;r.bestAccuracy=Math.max(r.bestAccuracy||0,accuracy);if(score>=need)ejSkills(r).quizPassed=true;save();if(score>=need&&ejSkills(r).reading.passed)markStep(3);else render()}
 function markListened(i){const r=record(dayFocus);if(!r.listened.includes(i))r.listened.push(i);save();if(r.listened.includes(0)&&r.listened.includes(1))markStep(2);else render()}
 function wire(){
  document.querySelectorAll('[data-page]').forEach(x=>x.onclick=()=>navigate(x.dataset.page));
@@ -244,7 +251,7 @@ function wire(){
  document.querySelectorAll('[data-say]').forEach(x=>x.onclick=()=>{const i=+x.dataset.say,u=courses[Math.floor(dayFocus/6)],d=dayFocus%6,arr=[u.dialog[d%3],u.dialog[(d+1)%3]];if(!('speechSynthesis'in window)){alert('Синтез речи недоступен. Открой внешний урок по ссылке и после него нажми кнопку подтверждения.');return}try{window.speechSynthesis.cancel();const utter=new SpeechSynthesisUtterance(arr[i][0]);utter.lang='en-US';utter.rate=.8;utter.onend=()=>markListened(i);utter.onerror=()=>alert('Не удалось воспроизвести речь. Используй внешний урок ниже.');window.speechSynthesis.speak(utter)}catch(e){alert('Синтез речи недоступен. Воспользуйся внешним аудиоуроком.')}});
  document.querySelectorAll('[data-listen-manual]').forEach(x=>x.onclick=()=>markStep(2));
  document.querySelectorAll('[data-answer]').forEach(x=>x.onclick=()=>{const [i,j]=x.dataset.answer.split(':').map(Number),r=record(dayFocus);if(r.quizDraft[i]!==undefined)return;r.quizDraft[i]=j;save();const u=courses[Math.floor(dayFocus/6)],d=dayFocus%6,qs=qlist(u,d,r.profile);if(Object.keys(r.quizDraft).length===qs.length)finishQuiz(r,u,d);else render()});
- const write=document.getElementById('lesson-writing');if(write)write.oninput=e=>{const r=record(dayFocus);r.writingPractice=e.target.value;save();const b=document.querySelector('[data-mark="4"]');if(b)b.disabled=(String(e.target.value).match(/[a-z]+(?:'[a-z]+)?/gi)||[]).length<8};
+ const write=document.getElementById('lesson-writing');if(write)write.oninput=e=>{const r=record(dayFocus);r.writingPractice=e.target.value;save();const b=document.querySelector('[data-mark="4"]');if(b)b.disabled=(String(e.target.value).match(/[a-z]+(?:'[a-z]+)?/gi)||[]).length<8||!ejSkills(r).dialogue.passed};
  document.querySelectorAll('[data-resetquiz]').forEach(x=>x.onclick=()=>{const r=record(dayFocus);r.quizDraft={};save();render()});
  const exp=document.getElementById('export');if(exp)exp.onclick=()=>{save();const blob=new Blob([JSON.stringify({version:4,exportedAt:new Date().toISOString(),data:store},null,2)],{type:'application/json'}),href=URL.createObjectURL(blob),a=document.createElement('a');a.href=href;a.download='english-journey-progress.json';a.click();setTimeout(()=>URL.revokeObjectURL(href),3000)};
  const imp=document.getElementById('import');if(imp)imp.onchange=async e=>{const file=e.target.files[0];if(!file)return;try{const parsed=JSON.parse(await file.text());if(!parsed.data||!parsed.data.logs||typeof parsed.data.logs!=='object'||!parsed.data.history)throw Error('Неверный файл');if(!confirm('Восстановление заменит текущий прогресс, включая экзамены и зачёты. Продолжить?'))return;store=Object.assign(freshStore(),parsed.data);store.preferences=Object.assign({adaptive:true},store.preferences||{});store.checkpoints=store.checkpoints||{};store.exams=store.exams||{};normalizePlanAnchor();if(!store.migratedTopicChecks){for(let w=0;w<courses.length;w++){if(store.logs[String((w+1)*6)]?.doneAt && !store.checkpoints[String(w)])store.checkpoints[String(w)]={passedAt:'legacy',attempts:[],legacy:true};}store.migratedTopicChecks=true;}save();alert('Прогресс восстановлен');navigate('home')}catch(err){alert('Невозможно прочитать резервную копию: '+err.message)}};
@@ -311,6 +318,9 @@ function topicBank(w){
   const others=arr.filter((_,j)=>j!==i).map(p=>p[1]);
   pool.push(makeQuestion(`w${w}-s${i}`,'reading',`Что значит фраза «${pair[0]}»?`,pair[1],others,`Перевод: ${pair[0]} — ${pair[1]}.`));
  });
+ const practice=SKILLS_DATA[w];
+ practice.reading.questions.forEach((q,i)=>pool.push({id:`w${w}-context-${i}`,type:'reading',prompt:q.q,options:q.options.slice(),answer:q.answer,review:'Повтори чтение бытового текста и найди информацию по вопросу.',passage:practice.reading.text}));
+ practice.audio.questions.forEach((q,i)=>pool.push({id:`w${w}-real-audio-${i}`,type:'listening',prompt:q.q,options:q.options.slice(),answer:q.answer,review:'Переслушай диалог VOA и обрати внимание на смысл.',audioUrl:practice.audio.url,audioTitle:practice.audio.title}));
  return pool;
 }
 function readyTomorrow(date){return Boolean(date) && dateYMD(new Date())<date}
@@ -320,8 +330,9 @@ function newTopicAttempt(w){
  const rand=prng(seedHash(`${w}::${attemptNumber}::${dateYMD(new Date())}::checkpoint`));
  const pool=topicBank(w),grammar=shuffleItems(pool.filter(q=>q.type==='grammar'),rand).slice(0,4),
  words=shuffleItems(pool.filter(q=>q.type==='vocabulary'),rand).slice(0,4),
- reading=shuffleItems(pool.filter(q=>q.type==='reading'),rand).slice(0,4);
- const items=shuffleItems([...grammar,...words,...reading],rand).map(q=>{
+ reading=shuffleItems(pool.filter(q=>q.type==='reading'&&q.passage),rand).slice(0,2),
+ listening=shuffleItems(pool.filter(q=>q.type==='listening'&&q.audioUrl),rand).slice(0,2);
+ const items=shuffleItems([...grammar,...words,...reading,...listening],rand).map(q=>{
   const correct=q.options[q.answer],options=shuffleItems(q.options,rand);
   return {...q,options,answer:options.indexOf(correct)};
  });
@@ -358,7 +369,7 @@ function reviewPanel(mistakes,week){
 }
 function testChoiceMarkup(qs,answers,kind,offset=0){
  return qs.map((q,i)=>{
-  const idx=i+offset,selected=answers[idx];return `<div class="questiongroup assessment-q"><div class="qcounter">Вопрос ${idx+1} из ${kind==='exam'?36:qs.length} · ${q.type==='listening'?'Аудирование':q.type==='reading'?'Чтение':q.type==='vocabulary'?'Слова':'Грамматика'}</div><div class="question">${esc(q.prompt)}</div>${q.spoken?`<button class="sound" data-assess-speak="${idx}">▶ Прослушать фразу</button><div class="tiny">Звук синтезируется браузером. Используй наушники.</div>`:''}${q.options.map((opt,j)=>`<button class="choice ${selected===j?'answer-selected':''}" data-${kind}-answer="${idx}:${j}" aria-pressed="${selected===j}">${String.fromCharCode(65+j)}. ${esc(opt)}</button>`).join('')}</div>`;
+  const idx=i+offset,selected=answers[idx];return `<div class="questiongroup assessment-q"><div class="qcounter">Вопрос ${idx+1} из ${kind==='exam'?36:qs.length} · ${q.type==='listening'?'Аудирование':q.type==='reading'?'Чтение':q.type==='vocabulary'?'Слова':'Грамматика'}</div>${q.passage?`<div class="reading-source assessment-text" lang="en">${esc(q.passage)}</div>`:''}${q.audioUrl?`<div class="audio-resource"><a href="${esc(q.audioUrl)}" target="_blank" rel="noopener noreferrer">▶ Реальная запись VOA: ${esc(q.audioTitle||'Открыть')} ↗</a></div>`:''}<div class="question">${esc(q.prompt)}</div>${q.spoken?`<button class="sound" data-assess-speak="${idx}">▶ Прослушать фразу</button><div class="tiny">Звук синтезируется браузером. Используй наушники.</div>`:''}${q.options.map((opt,j)=>`<button class="choice ${selected===j?'answer-selected':''}" data-${kind}-answer="${idx}:${j}" aria-pressed="${selected===j}">${String.fromCharCode(65+j)}. ${esc(opt)}</button>`).join('')}</div>`;
  }).join('');
 }
 function testCooldown(rec){
@@ -376,7 +387,7 @@ function checkpointPage(){
  else {
   if(!rec.current) newTopicAttempt(w);
   const cur=rec.current,qs=cur.questions,answers=cur.answers,answered=Object.keys(answers).length;
-  body=`<div class="notes">12 вопросов: грамматика, слова и чтение. Нужно минимум 10 верных ответов (80%). Тест не ограничен таймером. Ошибки будут показаны после отправки.</div>${testChoiceMarkup(qs,answers,'topic')}<div class="assessment-submit"><span class="tiny">Ответы: ${answered}/12</span><button class="primary dark" data-topic-submit="1" ${answered!==qs.length?'disabled':''}>Проверить тему →</button></div>`;
+  body=`<div class="notes">12 вопросов: грамматика, слова, понимание текста и реального аудио. Нужно минимум 10 верных ответов, включая правильные ответы по чтению и аудированию. Тест не ограничен таймером. Ошибки будут показаны после отправки.</div>${testChoiceMarkup(qs,answers,'topic')}<div class="assessment-submit"><span class="tiny">Ответы: ${answered}/12</span><button class="primary dark" data-topic-submit="1" ${answered!==qs.length?'disabled':''}>Проверить тему →</button></div>`;
  }
  return `<div class="lesson-head"><div><span class="pill">Обязательный зачёт · неделя ${w+1}</span><h2>${esc(u.title)}</h2><p>После пройденной темы · до 40 минут · попытки разных дней</p></div><button class="outline" data-page="assessments">Все зачёты →</button></div><div class="panel assessment-panel">${body}</div><p class="disclaimer">Если не набрать 80%, следующий раздел останется закрыт. Приложение покажет слабые места и предложит повторный вариант начиная со следующего календарного дня (по часам устройства).</p>`;
 }
@@ -384,8 +395,8 @@ function submitTopic(){
  const task=nextTask();if(task.type!=='topic')return;
  const w=task.week,rec=testsFor(w),cur=rec.current;if(!cur)return;
  const qs=cur.questions,answers=cur.answers;if(Object.keys(answers).length<qs.length)return;
- const score=answerRatio(qs,answers),wrong=mistakeList(qs,answers),passed=score>=Math.ceil(qs.length*CHECKPOINT_PASS);
- rec.attempts.push({on:new Date().toISOString(),score,total:qs.length,passed,weakTags:[...new Set(wrong.map(q=>q.type))]});
+ const score=answerRatio(qs,answers),wrong=mistakeList(qs,answers),bySkill={reading:0,listening:0};qs.forEach((q,i)=>{if(Object.hasOwn(bySkill,q.type)&&Number(answers[i])===q.answer)bySkill[q.type]++});const passed=score>=Math.ceil(qs.length*CHECKPOINT_PASS)&&bySkill.reading>=1&&bySkill.listening>=1;
+ rec.attempts.push({on:new Date().toISOString(),score,total:qs.length,passed,weakTags:[...new Set(wrong.map(q=>q.type))],bySkill});
  rec.lastMistakes=wrong;rec.lastScore=score;rec.current=null;
  if(passed){rec.passedAt=new Date().toISOString();rec.retryAfter=null;message='Тема зачтена! Доступна следующая неделя.';}
  else {rec.retryAfter=nextLocalDay();createRemediation(w,rec);message='Следующая тема закрыта. Сначала закрепи слабые места, затем пересдай завтра.';}
@@ -395,20 +406,15 @@ function generateFinalQuestions(attempt){
  const random=prng(seedHash(`A1-exam-${attempt}-${dateYMD(new Date())}`));
  const grammar=[],vocab=[],reading=[],listening=[];
  courses.forEach((u,w)=>{
-  grammar.push(...shuffleItems(topicBank(w).filter(q=>q.type==='grammar'),random).slice(0,1));
-  vocab.push(...shuffleItems(topicBank(w).filter(q=>q.type==='vocabulary'),random).slice(0,1));
-  const spoken=u.dialog[Math.floor(random()*u.dialog.length)];
-  if(w%2===0){
-   const distractors=u.dialog.filter(x=>x!==spoken).map(x=>x[1]);
-   listening.push(makeQuestion(`a1-listen-${w}`,'listening','Что означает услышанная фраза?',spoken[1],distractors,`Фраза: ${spoken[0]} — ${spoken[1]}`,spoken[0]));
-  }else{
-   const pair=u.examples[Math.floor(random()*u.examples.length)];
-   const others=u.examples.filter(x=>x!==pair).map(x=>x[1]);
-   reading.push(makeQuestion(`a1-read-${w}`,'reading',`Что значит «${pair[0]}»?`,pair[1],others,`Фраза: ${pair[0]} — ${pair[1]}`));
-  }
+  const bank=topicBank(w);
+  grammar.push(shuffleItems(bank.filter(q=>q.type==='grammar'),random)[0]);
+  vocab.push(shuffleItems(bank.filter(q=>q.type==='vocabulary'),random)[0]);
+  if(w%2===0)listening.push(shuffleItems(bank.filter(q=>q.type==='listening'&&q.audioUrl),random)[0]);
+  else reading.push(shuffleItems(bank.filter(q=>q.type==='reading'&&q.passage),random)[0]);
  });
  return shuffleItems([...grammar,...vocab,...reading,...listening],random).map(q=>{let correct=q.options[q.answer],options=shuffleItems(q.options,random);return {...q,options,answer:options.indexOf(correct)}});
 }
+
 function newFinalAttempt(){const rec=examRecord(),qs=generateFinalQuestions(rec.attempts.length);rec.current={startedAt:new Date().toISOString(),questions:qs,answers:{},part:0,writing:'',speaking:false};save();return rec.current}
 function assessmentBanner(){
  const task=nextTask(),accepted=Object.values(store.checkpoints).filter(c=>c?.passedAt).length;
@@ -493,3 +499,5 @@ async function checkForUpdates(){
 window.addEventListener('load',()=>{checkForUpdates();setInterval(checkForUpdates,15*60*1000)});
 
 render();
+
+function skillsOverview(){const s=skillStats();return `<div class="panel skill-overview"><h3>Проверенные языковые навыки</h3><div class="skill-metrics"><span>Составление фраз: <b>${s.grammar}</b></span><span>Понимание текста: <b>${s.reading}</b></span><span>Живое аудио: <b>${s.listening}</b></span><span>Диалоги: <b>${s.dialogue}</b></span></div><p class="tiny">Показаны только новые упражнения, реально зачтённые в уроках. Старые уроки не обнуляются. Показатели не подтверждают CEFR или произношение.</p></div>`}
