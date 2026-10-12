@@ -1,0 +1,13 @@
+/* English Journey 11.2: authentic listening and conversation lab */
+.ejlab-info,.ejlab-detail{margin-top:18px}
+.ejlab-stats{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0}
+.ejlab-stats span{padding:9px 12px;border:1px solid var(--line,#d9dfeb);border-radius:12px;font-size:13px}
+.ejlab-filters{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:center}
+.ejlab-filters>div,.ejlab-select,.ejlab-actions{display:flex;flex-wrap:wrap;gap:8px}
+.ejlab-select{margin-top:16px}
+.ejlab-detail .skill-question{margin-top:15px}
+.ejlab-detail textarea{display:block;width:100%;min-height:120px;margin:12px 0;box-sizing:border-box;padding:12px;border:1px solid #cbd5e1;border-radius:9px;font:inherit;line-height:1.5;color:#172138;background:#fff}
+.ejlab-detail .ejlab-source{display:inline-block;padding:11px 14px;background:#eef5ff;color:#0d458b;border:1px solid #cbdff7;border-radius:10px;text-decoration:none}
+.ejlab-actions{align-items:center;margin:12px 0}
+.ejlab-detail .skill-choicegrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-top:12px}
+@media(max-width:650px){.ejlab-filters{display:block}.ejlab-filters>div{margin:8px 0}.ejlab-detail .skill-choicegrid{grid-template-columns:1fr}}
