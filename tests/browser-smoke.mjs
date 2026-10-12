@@ -37,7 +37,7 @@ async function scenario(label,run){
 await scenario('startup, 100 topics, 600 lessons, optional listening',async page=>{
  assert.equal(await page.evaluate(()=>courses.length),100);
  assert.equal(await page.evaluate(()=>total),600);
- assert.equal(await page.evaluate(()=>APP_VERSION),'13.4.1');
+ assert.equal(await page.evaluate(()=>APP_VERSION),'13.5.0');
  assert.equal(await page.evaluate(()=>nextTask().type),'lesson');
  await page.locator('[data-open="0"]').first().click();
  const r=await page.evaluate(()=>({steps:record(0).steps,blocked:nextTask().type}));
@@ -221,6 +221,102 @@ await scenario('lesson follows words -> theory -> quiz -> dialogue, keeps progre
  assert.equal(await page.evaluate(()=>EnglishJourneyFlow.current()),0);
  assert.equal(await page.evaluate(()=>!!record(0).doneAt),true,'Completed prior lesson remains saved');
 });
+
+
+await scenario('hint and skip defer a word, next lesson demands different same-topic answer',async page=>{
+ await page.locator('[data-open="0"]').first().click();
+ const first=await page.evaluate(()=>vocabForLesson(0)[0]);
+ await page.locator('[data-vocab-recall]').first().waitFor();
+ await page.locator('.journey-current .support-hint').first().click();
+ assert.equal(await page.evaluate(()=>EnglishJourneySupport.pending().length),1);
+ assert.equal(await page.evaluate(()=>EnglishJourneySupport.pending()[0].reason),'hint');
+ await page.locator('.journey-current .support-skip').first().click();
+ assert.equal(await page.evaluate(()=>EnglishJourneySupport.pending().length),1,'hint+skip same example creates one obligation');
+ assert.equal(await page.evaluate(()=>EnglishJourneySupport.pending()[0].reason),'skip');
+ for(let i=1;i<8;i++){
+  await page.locator('[data-vocab-recall]').click();
+  const answer=await page.evaluate(()=>VOCAB_MAP.get(record(0).vocabRecall).en);
+  await page.locator('#vocab-answer').fill(answer);
+  await page.locator('[data-vocab-submit]').click();
+ }
+ assert.equal(await page.evaluate(()=>record(0).steps[1]),true);
+ await page.locator('[data-journey-next]').click();
+ for(let i=0;i<2;i++){
+  const value=await page.evaluate(idx=>grammarExercises()[idx].en,i);
+  await page.locator('[data-grammar-input="'+i+'"]').fill(value);
+  await page.locator('[data-grammar-check="'+i+'"]').click();
+ }
+ await page.locator('[data-journey-next]').click();
+ const qs=await page.evaluate(()=>qlist(courses[0],0,record(0).profile).map(q=>q[2]));
+ for(let i=0;i<qs.length;i++)await page.locator('[data-answer="'+i+':'+qs[i]+'"]').click();
+ const reading=await page.evaluate(()=>skillItem().reading.questions.map(q=>q.answer));
+ for(let i=0;i<reading.length;i++)await page.locator('[data-skill-reading="'+i+':'+reading[i]+'"]').click();
+ await page.locator('[data-skill-reading-submit]').click();
+ await page.locator('[data-journey-next]').click();
+ for(let i=0;i<2;i++){
+  const correct=await page.evaluate(()=>{const d=ejSkills(record(0)).dialogue,b=skillItem().dialogues[Number.isInteger(d.path)?d.path:dayFocus%2];return b.turns[Number(d.turn)||0].correct});
+  await page.locator('[data-dialog-answer="'+correct+'"]').click();
+ }
+ await page.locator('#lesson-writing').fill('I would like to ask for information about my hotel reservation please');
+ await page.locator('[data-mark="4"]').click();
+ assert.equal(await page.evaluate(()=>Boolean(record(0).doneAt)),true);
+ await page.locator('[data-journey-next]').click();
+ assert.equal(await page.evaluate(()=>page),'reinforcement');
+ const alternate=await page.evaluate(()=>EnglishJourneySupport.reviewTask());
+ assert.equal(alternate.kind,'vocabulary');
+ assert.notEqual(alternate.expected,first.en,'Recovery must use a different phrase from the same topic');
+ const previous=alternate.expected;
+ await page.locator('[data-review-alternate]').click();
+ const newQuestion=await page.evaluate(()=>EnglishJourneySupport.reviewTask());
+ assert.notEqual(newQuestion.expected,previous,'At least two alternative formulations should be available');
+ await page.reload({waitUntil:'load'});
+ await page.locator('[data-open="1"]').first().click();
+ assert.equal(await page.evaluate(()=>page),'reinforcement','Cannot bypass reinforcement on reload');
+ const answer=await page.evaluate(()=>EnglishJourneySupport.reviewTask().expected);
+ await page.locator('#support-review-answer').fill(answer);
+ await page.locator('[data-review-check]').click();
+ assert.equal(await page.evaluate(()=>EnglishJourneySupport.pending().length),0);
+ await page.locator('[data-review-continue]').click();
+ assert.equal(await page.evaluate(()=>dayFocus),1);
+ assert.equal(await page.evaluate(()=>EnglishJourneyFlow.current()),0);
+ assert.equal(await page.evaluate(()=>Boolean(record(0).doneAt)),true);
+});
+
+await scenario('skipped quiz answer stays wrong and completion remains provisional',async page=>{
+ await page.locator('[data-open="0"]').first().click();
+ await page.evaluate(()=>{
+  const r=record(0);r.steps[1]=true;r.steps[0]=true;r.flowStep=2;save();render();
+ });
+ const t=await page.locator('.questiongroup').count();
+ assert.ok(t>=3,'There must be several independent test questions');
+ await page.locator('.journey-current .support-skip').first().click();
+ assert.equal(await page.evaluate(()=>record(0).quizDraft[0]),-1);
+ const q=await page.evaluate(()=>qlist(courses[0],0,record(0).profile).map(x=>x[2]));
+ for(let i=1;i<q.length;i++)await page.locator('[data-answer="'+i+':'+q[i]+'"]').click();
+ const read=await page.evaluate(()=>skillItem().reading.questions.map(x=>x.answer));
+ for(let i=0;i<read.length;i++)await page.locator('[data-skill-reading="'+i+':'+read[i]+'"]').click();
+ await page.locator('[data-skill-reading-submit]').click();
+ assert.equal(await page.evaluate(()=>Boolean(record(0).steps[3])),true);
+ assert.equal(await page.evaluate(()=>Boolean(record(0).learningQuizProvisional)),true);
+ assert.equal(await page.evaluate(()=>record(0).firstAccuracy<1),true);
+ assert.equal(await page.evaluate(()=>EnglishJourneySupport.pending().length),1);
+});
+
+const examDebtSeed=seeded(12);
+examDebtSeed.practiceDebts=[{id:'test-exam-debt',lesson:0,week:0,kind:'grammar',ref:'0',
+ reason:'skip',createdAt:'2026-10-12T12:00:00Z',revision:0,attempts:0,clearedAt:null}];
+await scenario('exam locked until original topic is independently reinforced',Object.assign(async page=>{
+ await page.locator('[data-page="exam"]').click();
+ assert.equal(await page.evaluate(()=>page),'reinforcement');
+ assert.equal(await page.locator('textarea#support-review-answer').count(),1);
+ const expected=await page.evaluate(()=>EnglishJourneySupport.reviewTask().expected);
+ await page.locator('#support-review-answer').fill(expected);
+ await page.locator('[data-review-check]').click();
+ assert.equal(await page.evaluate(()=>EnglishJourneySupport.pending().length),0);
+ await page.locator('[data-review-continue]').click();
+ assert.equal(await page.evaluate(()=>page),'exam');
+ assert.equal(await page.evaluate(()=>nextTask().type),'exam');
+},{seed:examDebtSeed}));
 
 await scenario('dark / light / system themes persist without modifying learner progress',async (page)=>{
  const initial=await page.evaluate(()=>{const d=JSON.parse(localStorage.getItem('englishJourneyTravelV1'));return JSON.stringify({logs:d.logs,history:d.history,checkpoints:d.checkpoints,exams:d.exams,vocabulary:d.vocabulary});});

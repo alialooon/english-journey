@@ -1,0 +1,20 @@
+/* English Journey 13.5 — hints, skip/defer and mandatory same-topic recovery */
+.support-actions{display:flex;align-items:center;flex-wrap:wrap;gap:9px;margin:10px 0 17px}
+.support-actions .outline{padding:8px 12px;font-size:12px;border-radius:10px}
+.support-hint{border-color:#b8a5e9!important}
+.support-skip{border-style:dashed!important}
+.support-tip{width:100%;padding:11px 13px;border-radius:11px;background:var(--soft);border:1px solid var(--stroke);color:var(--ink);line-height:1.6}
+.support-tip small{color:var(--muted)}
+.support-warning{padding:13px 16px;margin:12px 0 16px;border-radius:12px;border:1px solid #e2c3a2;background:#fff8ea;color:#604b2b;font-size:13px;line-height:1.6}
+.support-review{max-width:880px;margin:18px 0}
+.support-review h3{font-size:21px;margin:8px 0}
+.support-review-question{padding:17px;background:var(--soft);border-radius:13px;white-space:pre-line;line-height:1.65;margin:20px 0}
+.support-review-question b{font-weight:800}
+.support-review-options{display:grid;gap:9px;margin:18px 0}
+#support-review-answer{width:100%;min-height:114px;background:var(--paper);color:var(--ink);border:1px solid var(--stroke);border-radius:12px;padding:14px;font:inherit;display:block;margin:15px 0}
+.support-review-actions{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:15px 0 5px}
+.support-review-actions>.tiny{max-width:460px}
+:root[data-theme="dark"] .support-warning{background:#443521;color:#ffe0ad;border-color:#937044}
+:root[data-theme="dark"] .support-tip{background:#302b52;color:#e9e4ff;border-color:#625689}
+:root[data-theme="dark"] .support-review-question{background:#253650}
+@media(max-width:580px){.support-review-actions{flex-direction:column;align-items:stretch}.support-review-actions>.tiny{max-width:none}}
