@@ -274,10 +274,10 @@ await scenario('A0: Russian prompts and dialog use only previously taught materi
  assert.equal(await page.locator('.writing-item .writing-ru').nth(3).innerText(),
   'Переведи на английский: «Ты из Испании?»');
  await page.locator('[data-dialog-path="1"]').click();
- assert.match(await page.locator('.course-meaning').innerText(),/изученных в разделе теории/);
+ assert.match(await page.locator('.course-meaning').innerText(),/показанных в разделе теории/);
  const first=await page.evaluate(()=>skillItem().dialogues[1].turns[0].correct);
  await page.locator('[data-dialog-answer="'+first+'"]').click();
- assert.match(await page.locator('.course-meaning').innerText(),/изученных в разделе теории/);
+ assert.match(await page.locator('.course-meaning').innerText(),/показанных в разделе теории/);
  assert.equal((await page.locator('.journey-current').innerText()).includes('Could you spell it'),false,
    'An untaught English phrase must not appear in the lesson dialog');
  const second=await page.evaluate(()=>skillItem().dialogues[1].turns[1].correct);
