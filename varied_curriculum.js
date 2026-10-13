@@ -196,7 +196,7 @@ function readingModels(i){
     first.some(x=>clean(x.en)===clean(assessed[2].en)))throw Error('Reading reveals a writing answer');
  return [...first,third];
 }
-window.EJVariety={curated,practice,weekModels,readingModels,teachingNotes,foundationPanel,foundationAudit,normalized:clean,
+window.EJVariety={curated,practice,weekModels,readingModels,teachingNotes,foundationPanel,foundationAudit,foundationHint:i=>foundationLessons[i]?.rule||'',normalized:clean,
  audit(){
   const issues=[];
   for(let i=0;i<bank.length*6;i++){
