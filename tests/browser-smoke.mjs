@@ -249,6 +249,58 @@ await scenario('offline reload works after service worker installation',async (p
 });
 
 
+await scenario('due vocabulary recall bridges old and new lessons without future words',async page=>{
+ await page.evaluate(()=>{
+  const earlier=vocabForLesson(0)[0];
+  const future=vocabForLesson(2)[0];
+  store.logs['0']={steps:[true,true,true,true,true],doneAt:'2026-10-11T11:00:00Z',
+   vocabDoneIds:[earlier.id],answered:[]};
+  store.vocabulary[earlier.id]={introducedAt:'2026-10-11',due:'2000-01-01',step:2,correct:1,lapses:0};
+  if(future.id!==earlier.id)store.vocabulary[future.id]={
+   introducedAt:'2026-10-11',due:'2000-01-01',step:2,correct:1,lapses:0};
+  save();render();
+ });
+ await page.locator('[data-open="1"]').first().click();
+ const setup=await page.evaluate(()=>({
+  recalled:record(1).lessonRecallIds,
+  source:vocabForLesson(0)[0].id,
+  future:vocabForLesson(2)[0].id,
+  newToday:vocabForLesson(1).map(x=>x.id)
+ }));
+ assert.deepEqual(setup.recalled,[setup.source],'Only previously completed, due cards can be selected');
+ assert.ok(!setup.newToday.includes(setup.recalled[0]),'Current day words are never reviewed before learning');
+ assert.equal(await page.locator('[data-lesson-recall]').count(),0,'Review starts after new-word exposure');
+ for(let i=0;i<8;i++){
+  await page.locator('[data-vocab-recall]').click();
+  const answer=await page.evaluate(()=>VOCAB_MAP.get(record(1).vocabRecall).en);
+  await page.locator('#vocab-answer').fill(answer);
+  await page.locator('[data-vocab-submit]').click();
+ }
+ assert.equal(await page.evaluate(()=>record(1).steps[1]),false,'Due review is part of vocabulary completion');
+ assert.equal(await page.locator('[data-lesson-recall]').count(),1);
+ await page.locator('#lesson-recall-answer').fill('incorrect answer');
+ await page.locator('[data-lesson-recall]').click();
+ assert.equal(await page.evaluate(()=>record(1).steps[1]),false,'Wrong retrieval does not pass');
+ const known=await page.evaluate(()=>VOCAB_MAP.get(record(1).lessonRecallIds[0]).en);
+ assert.match(await page.locator('.lesson-recall .result.error').innerText(),new RegExp(known,'i'));
+ await page.locator('#lesson-recall-answer').fill(known);
+ await page.locator('[data-lesson-recall]').click();
+ const result=await page.evaluate(()=>{
+  const id=record(1).lessonRecallIds[0],card=store.vocabulary[id];
+  return {passed:record(1).steps[1],step:card.step,lapses:card.lapses,
+    due:card.due,expectedDue:vocNext(1),reviewed:card.reviewedOn};
+ });
+ assert.equal(result.passed,true);
+ assert.equal(result.step,0,'Correction after a failed attempt must not imply mastery');
+ assert.equal(result.lapses,1);
+ assert.equal(result.due,result.expectedDue);
+ assert.ok(result.reviewed);
+});
+await scenario('no due vocabulary means no artificial extra requirement',async page=>{
+ await page.locator('[data-open="0"]').first().click();
+ assert.deepEqual(await page.evaluate(()=>record(0).lessonRecallIds),[]);
+ assert.equal(await page.locator('[data-lesson-recall]').count(),0);
+});
 await scenario('lesson follows words -> theory -> quiz -> dialogue, keeps progress on reload',async page=>{
  await page.locator('[data-open="0"]').first().click();
  assert.equal(await page.evaluate(()=>EnglishJourneyFlow.current()),0);
