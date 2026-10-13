@@ -24,11 +24,84 @@ function vocabForLesson(day){const week=Math.floor(day/6),offset=(day%6)*8,bank=
 function vocabDue(){ensureVocabulary();const now=vocToday();return Object.entries(store.vocabulary).filter(([id,s])=>VOCAB_MAP.has(id)&&s?.introducedAt&&s.due&&s.due<=now&&s.reviewedOn!==now).map(([id])=>VOCAB_MAP.get(id)).sort((a,b)=>{const da=store.vocabulary[a.id].due,db=store.vocabulary[b.id].due;return da.localeCompare(db)||a.week-b.week})}
 function vocabStats(){ensureVocabulary();const recs=Object.values(store.vocabulary).filter(x=>x&&x.introducedAt);return {introduced:recs.length,mastered:recs.filter(x=>x.step>=4).length,needsWork:recs.filter(x=>x.lapses>0&&x.step<4).length,due:vocabDue().length,all:VOCAB_MAP.size}}
 function vocabProgressPreview(){const s=vocabStats();return '<div class="vocab-summary"><div><small>Начали изучать</small><strong>'+s.introduced+'</strong></div><div><small>Уверенно вспомнили с интервалами</small><strong>'+s.mastered+'</strong></div><div><small>Повторить сегодня</small><strong>'+s.due+'</strong></div><button class="outline" data-page="vocabulary">Открыть словарь →</button></div>'}
+// Small, due-only retrieval bridge inside the next lesson. It deliberately
+// excludes today's cards and all words from unfinished/future lessons.
+const LESSON_RECALL_LIMIT=3;
+function previouslyCompletedVocabulary(index){
+ const known=new Set();
+ for(let i=0;i<index;i++){
+  const rec=store.logs?.[String(i)];
+  if(!rec?.steps?.[1])continue;
+  for(const id of rec.vocabDoneIds||[])if(store.vocabulary?.[id]?.introducedAt)known.add(id);
+ }
+ return known;
+}
+function ensureLessonRecall(index,r){
+ if(Array.isArray(r.lessonRecallIds))return;
+ const earlier=previouslyCompletedVocabulary(index);
+ const current=new Set(vocabForLesson(index).map(x=>x.id));
+ r.lessonRecallIds=vocabDue().filter(x=>earlier.has(x.id)&&!current.has(x.id))
+  .slice(0,LESSON_RECALL_LIMIT).map(x=>x.id);
+ r.lessonRecallDoneIds=[];
+ r.lessonRecallMistakes={};
+ save();
+}
+function vocabularyStepReady(index,r){
+ const cards=vocabForLesson(index);
+ return cards.every(x=>r.vocabDoneIds?.includes(x.id)) &&
+  (r.lessonRecallIds||[]).every(id=>r.lessonRecallDoneIds?.includes(id));
+}
+function lessonRecallPane(index,r){
+ const next=(r.lessonRecallIds||[]).find(id=>!r.lessonRecallDoneIds?.includes(id));
+ if(!next)return '';
+ const item=VOCAB_MAP.get(next);
+ if(!item)throw Error('Изученное выражение больше не найдено в словаре: '+next);
+ const incorrect=Boolean(r.lessonRecallMistakes?.[next]);
+ const done=(r.lessonRecallDoneIds||[]).length;
+ return '<div class="vocab-practice lesson-recall" aria-label="Интервальное повторение">'+
+  '<div class="tiny">Вспомни слово из прошлых уроков · '+(done+1)+'/'+r.lessonRecallIds.length+'</div>'+
+  '<div class="vocab-prompt">'+esc(item.ru)+'</div>'+
+  '<input id="lesson-recall-answer" spellcheck="false" autocomplete="off" autocapitalize="off" '+
+  'aria-label="Напиши старое английское слово по памяти" placeholder="Перевод на английский">'+
+  '<button class="primary dark" data-lesson-recall="'+esc(item.id)+'">Проверить</button>'+
+  (incorrect?'<p class="result error" role="status">Повтори: <b>'+esc(item.en)+'</b>. '+
+   'Этот ответ будет повторён ещё раз завтра.</p>':'')+'</div>';
+}
+function gradeLessonRecall(id,answer){
+ const r=record(dayFocus);
+ ensureVocabulary();ensureLessonRecall(dayFocus,r);
+ const expected=(r.lessonRecallIds||[]).find(x=>!r.lessonRecallDoneIds?.includes(x));
+ if(id!==expected)return;
+ const item=VOCAB_MAP.get(id),state=store.vocabulary[id];
+ if(!item||!state?.introducedAt)return;
+ const good=vocText(answer)===vocText(item.en);
+ if(!good){
+  r.lessonRecallMistakes=r.lessonRecallMistakes||{};
+  r.lessonRecallMistakes[id]=true;
+  save();render();return;
+ }
+ r.lessonRecallDoneIds=r.lessonRecallDoneIds||[];
+ r.lessonRecallDoneIds.push(id);
+ const hadError=Boolean(r.lessonRecallMistakes?.[id]);
+ state.reviewedOn=vocToday();
+ state.lastResult=!hadError;
+ state.correct=(state.correct||0)+(hadError?0:1);
+ state.lapses=(state.lapses||0)+(hadError?1:0);
+ state.step=hadError?0:Math.min(7,(state.step||0)+1);
+ state.due=vocNext(hadError?1:VOCAB_INTERVALS[Math.min(state.step,VOCAB_INTERVALS.length-1)]);
+ save();
+ if(vocabularyStepReady(dayFocus,r)&&!r.steps[1])markStep(1);
+ else render();
+}
 function vocabularyLessonPane(unit,day,r,index){
  ensureVocabulary();if(!Array.isArray(r.vocabDoneIds))r.vocabDoneIds=[];
+ if(!r.steps[1])ensureLessonRecall(index,r);
  const items=vocabForLesson(index), remaining=items.filter(item=>!r.vocabDoneIds.includes(item.id));
  if(r.steps[1] && r.vocabDoneIds.length===0) return '<div class="donebanner">Шаг был завершён в прежней версии приложения. Твой прогресс сохранён. Новые карточки доступны в последующих уроках и разделе «Мой словарь».</div>';
- if(!remaining.length) return '<div class="donebanner">✓ Все '+items.length+' выражений проверены. Они будут появляться в интервальных повторениях. '+nextButton(2)+'</div>';
+ if(!remaining.length){
+  const recall=lessonRecallPane(index,r);
+  return recall||'<p class="tiny">Слова урока проверены. Повторение запланировано по интервалам.</p>';
+ }
  const item=remaining[0],recall=r.vocabRecall===item.id;
  const err=r.vocabLastError===item.id;
  const studied=items.length-remaining.length;
@@ -50,7 +123,7 @@ function vocabLearnAnswer(id,answer){
  r.vocabDoneIds=r.vocabDoneIds||[];r.vocabDoneIds.push(id);r.vocabRecall=null;r.vocabLastError=null;
  const old=store.vocabulary[id];
  if(!old?.introducedAt)store.vocabulary[id]={introducedAt:vocToday(),due:vocNext(1),step:0,correct:0,lapses:r.vocabMistakes?.[id]?1:0};
- save();if(items.every(x=>r.vocabDoneIds.includes(x.id)))markStep(1);else render();
+ save();if(vocabularyStepReady(dayFocus,r))markStep(1);else render();
 }
 function vocabReviewItem(item,answer){
  ensureVocabulary();if(!vocabDue().some(x=>x.id===item.id))return;
@@ -69,6 +142,12 @@ function vocabularyDashboard(){
  '<div class="panel"><h3>Что значат показатели</h3><p class="tiny">В словарь входят отдельные слова и полезные выражения. «Освоено» считается только после нескольких правильных ответов в разные дни, а не после просмотра карточки. Это оценка словарной памяти, не официальный CEFR.</p><p class="tiny">В текущем банке '+s.all+' уникальных слов и выражений. Программа A1 содержит 25 тем; первые 6 тем A2 доступны. Полный A2 и B1 ещё требуют авторских уроков и комплексных экзаменов.</p></div>';
 }
 function vocabularyHandlers(){
+ document.querySelectorAll('[data-lesson-recall]').forEach(b=>{
+  const action=()=>gradeLessonRecall(b.dataset.lessonRecall,document.getElementById('lesson-recall-answer')?.value||'');
+  b.onclick=action;
+  const input=document.getElementById('lesson-recall-answer');
+  if(input)input.onkeydown=e=>{if(e.key==='Enter')action()};
+ });
  document.querySelectorAll('[data-vocab-recall]').forEach(b=>b.onclick=()=>{record(dayFocus).vocabRecall=b.dataset.vocabRecall;record(dayFocus).vocabLastError=null;save();render();document.getElementById('vocab-answer')?.focus()});
  document.querySelectorAll('[data-vocab-submit]').forEach(b=>{const action=()=>vocabLearnAnswer(b.dataset.vocabSubmit,document.getElementById('vocab-answer')?.value||'');b.onclick=action;const input=document.getElementById('vocab-answer');if(input)input.onkeydown=e=>{if(e.key==='Enter')action()};});
  document.querySelectorAll('[data-vocab-review]').forEach(b=>{const action=()=>{const it=VOCAB_MAP.get(b.dataset.vocabReview);if(it)vocabReviewItem(it,document.getElementById('vocab-review-answer')?.value||'')};b.onclick=action;const input=document.getElementById('vocab-review-answer');if(input)input.onkeydown=e=>{if(e.key==='Enter')action()};});
