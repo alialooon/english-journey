@@ -398,6 +398,63 @@ await scenario('vocabulary category examples persist through spaced recall',asyn
  assert.equal(await page.locator('[data-vocab-review="hello"]').count(),1);
  assert.match(await page.locator('.vocab-usage').last().innerText(),/приветствие/i);
 });
+await scenario('next 12 A1 lessons teach one explicit pattern before recall',async page=>{
+ const audit=await page.evaluate(()=>({
+  patterns:EJA1Patterns.audit(),
+  vocabulary:EJA1VocabContext.audit(),
+  introduced:EJA1Patterns.lessons.length,
+  days:[6,7,11,12,17].map(i=>{
+   dayFocus=i;
+   const r=record(i);
+   return {day:i,html:theoryPane(courses[Math.floor(i/6)],i%6,r)};
+  })
+ }));
+ assert.equal(audit.patterns.length,0);
+ assert.equal(audit.vocabulary.covered,96);
+ assert.deepEqual(audit.vocabulary.issues,[]);
+ assert.equal(audit.introduced,12);
+ for(const row of audit.days){
+  assert.ok(row.html.includes('data-formula-check="0"'), 'Missing structured recall on day '+row.day);
+  assert.ok(row.html.includes('Почему так:'), 'Missing explanation on day '+row.day);
+  assert.ok(!row.html.slice(0,row.html.indexOf('class="skill-section"')).includes('['+'готовый ответ'+']'));
+ }
+ await page.locator('[data-open="0"]').first().click();
+ await page.evaluate(()=>{
+  dayFocus=6;page='lesson';
+  const r=record(6);r.steps[1]=true;r.flowStep=1;save();render();
+ });
+ assert.equal(await page.locator('[data-formula-check]').count(),2);
+ assert.match(await page.locator('.graded-pattern').innerText(),/артикл/i);
+ const answer=await page.evaluate(()=>EJA1Patterns.get(6).drill[0][1]);
+ await page.locator('[data-formula-input="0"]').fill(answer);
+ await page.locator('[data-formula-check="0"]').click();
+ assert.equal(await page.evaluate(()=>Boolean(record(6).formulaDrills?.[0])),true);
+ assert.equal(await page.evaluate(()=>Boolean(record(6).steps[0])),false,
+  'Recall of fragment must not bypass independent grammar task');
+ await page.evaluate(()=>{
+  dayFocus=12;page='lesson';const r=record(12);
+  r.steps[1]=true;r.flowStep=1;save();render();
+ });
+ assert.match(await page.locator('.graded-pattern').innerText(),/Where/i);
+ assert.ok(!(await page.locator('.graded-pattern').innerText()).includes('There are'),
+  'Future plural construction is not needed at lesson 13');
+});
+await scenario('contextual vocabulary extends to shopping and place names',async page=>{
+ const audit=await page.evaluate(()=>({
+  shop:vocabUsage(VOCAB_BANK[1].find(x=>x.id==='shop')),
+  store:vocabUsage(VOCAB_BANK[1].find(x=>x.id==='store')),
+  left:vocabUsage(VOCAB_BANK[2].find(x=>x.id==='left')),
+  right:vocabUsage(VOCAB_BANK[2].find(x=>x.id==='right'))
+ }));
+ assert.ok(audit.shop.length>15);
+ assert.notEqual(audit.shop,audit.store);
+ assert.notEqual(audit.left,audit.right);
+ await page.locator('[data-open="0"]').first().click();
+ await page.evaluate(()=>{
+  dayFocus=6;page='lesson';const r=record(6);r.flowStep=0;save();render();
+ });
+ assert.match(await page.locator('.vocab-usage').first().innerText(),/Ситуация:/);
+});
 await scenario('lesson follows words -> theory -> quiz -> dialogue, keeps progress on reload',async page=>{
  await page.locator('[data-open="0"]').first().click();
  assert.equal(await page.evaluate(()=>EnglishJourneyFlow.current()),0);
