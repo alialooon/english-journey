@@ -1,4 +1,4 @@
-/* English Journey 13.7 — strict prerequisite curriculum.
+/* English Journey 13.9 — strict prerequisite curriculum with reviewed variations.
  * No compulsory lesson exercise can draw vocabulary from future days or
  * English grammar/sentences that the learner was not explicitly shown first.
  * All tasks are generated from today's eight introduced cards and this week's
@@ -185,7 +185,7 @@ skillDialogPane=function(r){
 // Preserve all completed stages and the saved history, reset only unfinished drafts.
 lesson=function(){
  const r=record(dayFocus);
- if(!r.prerequisiteAlignedV){
+ if(r.prerequisiteAlignedV!==VERSION){
   if(!r.steps[0]){
    const sk=ejSkills(r);
    sk.grammar.answers={};sk.grammar.passed=false;
