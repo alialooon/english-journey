@@ -48,65 +48,56 @@ function updateWriting(){
 const oldDialogPane=skillDialogPane;
 skillDialogPane=function(r){
  const current=ejSkills(r).dialogue,ds=skillItem().dialogues;
+ if(current.passed)return ''; // The lesson progress already records this success.
  const path=Number.isInteger(current.path)?current.path:dayFocus%2;
  const branch=ds[path],ix=Number(current.turn)||0,week=Math.floor(dayFocus/6);
- if(current.passed)return '<div class="skill-section"><h3>🗣️ Учебный диалог</h3>'+
-  '<p>Сначала ознакомься со значением английской реплики. Затем выбери подходящий ответ.</p>'+
-  ds.map((b,i)=>'<button class="outline '+(i===path?'skill-active':'')+'" data-dialog-path="'+i+'">'+esc(b.title)+'</button>').join(' ')+
-  '<div class="donebanner">✓ Диалог пройден. Реплики были объяснены до выбора ответа.</div></div>';
  const turn=branch.turns[ix],meaning=turnMeaning(turn,week,path,ix),glossary=phrasesBeforeTurn(week,path,ix);
- const choices=turn.choices.map((text,j)=>'<button class="choice" data-dialog-answer="'+j+'">'+String.fromCharCode(65+j)+'. '+esc(text)+'</button>').join('');
- return '<div class="skill-section"><h3>🗣️ Учебный диалог</h3>'+
-  '<p class="tiny">Сначала прочитай реплику и её значение на русском. Новые фразы не нужно угадывать. Затем выбери осмысленный английский ответ.</p>'+
-  '<div class="skill-paths">'+ds.map((b,i)=>'<button class="outline '+(i===path?'skill-active':'')+
-  '" data-dialog-path="'+i+'">'+esc(b.title)+'</button>').join('')+'</div>'+
-  '<div class="skill-question"><div class="qcounter">Реплика '+(ix+1)+' из '+branch.turns.length+'</div>'+
+ const choices=turn.choices.map((choice,j)=>
+  '<button class="choice" data-dialog-answer="'+j+'">'+String.fromCharCode(65+j)+'. '+esc(choice)+'</button>').join('');
+ return '<section class="skill-section lesson-compact-section"><h3>Диалог</h3>'+
+  '<div class="skill-paths">'+ds.map((b,i)=>
+   '<button class="outline '+(i===path?'skill-active':'')+'" data-dialog-path="'+i+'">'+esc(b.title)+'</button>').join('')+'</div>'+
+  '<div class="skill-question"><div class="qcounter">'+(ix+1)+'/'+branch.turns.length+'</div>'+
   '<b lang="en">'+esc(turn.lead)+'</b>'+
-  '<div class="course-meaning"><b>Что это значит:</b> '+esc(meaning)+'</div>'+glossary+
-  '<p class="tiny">Выбери ответ по смыслу:</p><div class="skill-choicegrid">'+choices+'</div></div>'+
-  (current.lastWrong?'<div class="result error">Пока неверно. Сверь вопрос и перевод, затем выбери другую реплику.</div>':'')+
-  '</div>';
+  '<div class="course-meaning"><b>Перевод:</b> '+esc(meaning)+'</div>'+glossary+
+  '<div class="skill-choicegrid">'+choices+'</div></div>'+
+  (current.lastWrong?'<p class="result error" role="alert">Не подходит по смыслу. Попробуй ещё раз.</p>':'')+
+  '</section>';
 };
 speakingPane=function(u,day,r){
  if(r.steps[4]&&(!r.writingAnswers||Object.keys(r.writingAnswers).length===0)){
-  return '<div class="donebanner">✓ Этот этап был зачтён в предыдущей версии. Прогресс сохранён. В следующих уроках переводы будут задаваться по-русски.</div>';
+  return '<p class="tiny">Ранее выполненный этап зачтён. Прогресс сохранён.</p>';
  }
  const items=writingPrompts();
  r.writingAnswers=r.writingAnswers||{};
  r.writingDrafts=r.writingDrafts||{};
  r.writingValidated=passedWriting(r,items);
- let translation=items.map((item,i)=>{
+ const translation=items.map((item,i)=>{
   const current=r.writingAnswers[item.id]||{},good=current.ok===true,skipped=current.skipped===true;
   return '<div class="writing-item" data-writing-item="'+item.id+'">'+
-   '<div class="qcounter">'+(i+1)+' из '+items.length+' · '+(item.kind==='vocabulary'?'Слово или выражение':'Предложение по правилу')+'</div>'+
-   '<b class="writing-ru">Переведи на английский: «'+esc(item.ru)+'»</b>'+
-   (good?'<div class="result">✓ Правильно: <span lang="en">'+esc(item.en)+'</span></div>':
-    skipped?'<div class="support-warning">⏭ Отложено. Позже будет новый пример по этой теме.</div>':
+   '<div class="qcounter">'+(i+1)+'/'+items.length+' · '+(item.kind==='vocabulary'?'Слово':'Предложение')+'</div>'+
+   '<b class="writing-ru">'+esc(item.ru)+'</b>'+
+   (good?'<div class="result"><span aria-label="Верно">✓</span> <span lang="en">'+esc(item.en)+'</span></div>':
+    skipped?'<p class="tiny">Отложено для повторения</p>':
     '<div class="writing-inputrow"><input type="text" data-writing-answer="'+item.id+
-    '" spellcheck="false" autocomplete="off" aria-label="Перевод с русского на английский" placeholder="Напиши по-английски..." value="'+esc(r.writingDrafts[item.id]||'')+'">'+
+    '" spellcheck="false" autocomplete="off" aria-label="Переведи на английский: '+esc(item.ru)+
+    '" placeholder="Ответ на английском" value="'+esc(r.writingDrafts[item.id]||'')+'">'+
     '<button class="outline" data-writing-check="'+item.id+'">Проверить</button></div>'+
-    (current.error?'<div class="result error">Ответ пока не совпал с изученной формой. Проверь перевод в словаре или правило выше и попробуй ещё раз. Другой корректный вариант иногда может не распознаться — можно отметить пример для повторения.</div>':''))+
-  '</div>';
+    (current.error?'<p class="result error" role="alert">Пока не совпало. Проверь правило или открой подсказку.</p>':''))+
+   '</div>';
  }).join('');
  const correct=items.filter(x=>r.writingAnswers[x.id]?.ok).length,
- deferred=items.filter(x=>r.writingAnswers[x.id]?.skipped).length;
- return '<div class="split"><span class="pill">Шаг 4 · диалог и перевод</span>'+
-  (r.steps[4]?'✅ Готово':'')+'</div>'+
-  '<h3>Сначала пойми реплику, затем ответь</h3>'+
-  '<p>У каждого диалога есть русское объяснение. Если английская фраза новая, её смысл показан до ответа. Это учебная практика, а не экзамен без подсказок.</p>'+
-  skillDialogPane(r)+
-  '<div class="writing-lesson"><h3>✍️ Переведи с русского на английский</h3>'+
-  '<p>Ниже конкретные слова и предложение <b>только из уже изученных в этом уроке материалов</b>. '+
-  'Переведи каждое отдельно. Не нужно писать произвольный список английских слов. '+
-  'Если воспользуешься подсказкой или пропуском, позже придётся решить новый пример по той же теме.</p>'+
+  deferred=items.filter(x=>r.writingAnswers[x.id]?.skipped).length;
+ return skillDialogPane(r)+
+  '<section class="writing-lesson"><h3>Переведи на английский</h3>'+
+  '<p class="tiny">Используй изученные слова и правила. Подсказка или пропуск отправят пример на повторение.</p>'+
   translation+
-  '<div class="writing-summary tiny">Самостоятельно: '+correct+'/'+items.length+
-  '. Отложено на закрепление: '+deferred+'.</div>'+
-  (r.writingValidated?'<div class="donebanner">✓ Переводы выполнены или отмечены для обязательного повторения.</div>':'')+
-  '</div><p class="disclaimer">Можешь произнести правильные английские фразы вслух для практики. Произношение пока автоматически не оценивается.</p>'+
-  '<button class="primary dark" data-mark="4" '+(!r.writingValidated||!ejSkills(r).dialogue.passed?'disabled':'')+'>'+
-  (r.steps[4]?'✓ Диалог и переводы выполнены':'✓ Завершить диалог и перевод')+'</button>';
+  (!r.steps[4]?'<p class="writing-summary tiny" role="status">Верно: '+correct+'/'+items.length+
+    (deferred?' · На повторении: '+deferred:'')+'</p>':'')+
+  '</section>';
 };
+// Completing all checked answers automatically marks the step.
+// The only continue button belongs to lesson_flow.js.
 const oldWire=wire,oldRender=render;
 wire=function(){
  oldWire();
