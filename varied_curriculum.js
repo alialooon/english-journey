@@ -200,7 +200,7 @@ function foundationAudit(){
  const errors=[],seen=new Set();
  for(let d=0;d<6;d++){
   foundationNewTokens[d].forEach(t=>seen.add(t));
-  const rows=[...practice(d),...readingModels(d)];
+  const rows=[...practice(d),...readingModels(d),...foundationPatterns[d].drill.map(x=>({en:x[1]}))];
   for(const item of rows)for(const word of item.en.toLowerCase().match(/[a-z]+/g)||[]){
    if(!seen.has(word))errors.push({day:d+1,word,model:item.en});
   }
