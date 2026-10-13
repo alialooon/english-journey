@@ -56,12 +56,36 @@ const authored=[
 ]
 ];
 const readingOnly=[
- ['Я Анна.','I am Anna.'],
- ['То моя сумка.','That is my bag.'],
- ['Станция здесь.','The station is here.'],
- ['Чаю, пожалуйста.','Tea, please.'],
- ['Они живут в Лондоне.','They live in London.'],
- ['Ты говоришь по-английски?','Do you speak English?']
+ [
+  ['Я Анна.','I am Anna.'],['Ты из России?','Are you from Russia?'],
+  ['Мой друг — турист.','My friend is a tourist.'],['Мой друг из Испании.','My friend is from Spain.'],
+  ['Мой друг — турист?','Is my friend a tourist?'],['Я из России.','I am from Russia.']
+ ],
+ [
+  ['Вон то — моя сумка.','That is my bag.'],['Это моя сумка.','This is my bag.'],
+  ['Вон то — моя сумка?','Is that my bag?'],['Вон то — один билет.','That is one ticket.'],
+  ['Две сумки.','Two bags.'],['Вон то — один билет?','Is that one ticket?']
+ ],
+ [
+  ['Станция здесь.','The station is here.'],['Отель здесь?','Is the hotel here?'],
+  ['Мой отель здесь.','My hotel is here.'],['Здесь есть сумка.','There is a bag here.'],
+  ['Аэропорт рядом с отелем.','The airport is near the hotel.'],['Здесь рядом есть отель.','There is a hotel near here.']
+ ],
+ [
+  ['Чаю, пожалуйста.','Tea, please.'],['Кофе, пожалуйста.','Coffee, please.'],
+  ['Воды, пожалуйста.','Water, please.'],['Сэндвич, пожалуйста.','A sandwich, please.'],
+  ['Счёт, пожалуйста.','The bill, please.'],['Меню, пожалуйста.','The menu, please.']
+ ],
+ [
+  ['Они живут в Лондоне.','They live in London.'],['Я живу в Лондоне.','I live in London.'],
+  ['Мы учимся каждый день.','We study every day.'],['Он не пьёт чай.','He does not drink tea.'],
+  ['Мы пьём чай.','We drink tea.'],['Ты не работаешь.','You do not work.']
+ ],
+ [
+  ['Ты говоришь по-английски?','Do you speak English?'],['Он учится?','Does he study?'],
+  ['Я никогда не работаю.','I never work.'],['Они часто путешествуют.','They often travel.'],
+  ['Он часто путешествует?','Does he often travel?'],['Они говорят по-английски?','Do they speak English?']
+ ]
 ];
 const teachingNotes=[
  'Местоимения и связка: I → am (я); you → are (ты); he/she → is (он/она). В вопросе am/are/is ставится ПЕРЕД местоимением. tourist — турист; friend — друг/подруга; my — мой/моя; from — из; Spain — Испания. Перед tourist нужен артикль a. Используй уже изученные карточки и меняй порядок слов по правилу.',
@@ -92,9 +116,12 @@ function practice(i){
 function weekModels(i){return bank[Math.floor(i/6)]||SKILLS_DATA[Math.floor(i/6)].grammar;}
 function readingModels(i){
  if(!curated(i))return null;
- const first=practice(i).slice(0,2);
- const third=model(readingOnly[Math.floor(i/6)]);
- if(first.some(x=>clean(x.en)===clean(third.en)))throw Error('Reading overlaps writing');
+ const day=i%6;
+ const first=practice(day===0?i:i-1).slice(0,2);
+ const third=model(readingOnly[Math.floor(i/6)][day]);
+ const assessed=practice(i);
+ if(assessed.some(x=>clean(x.en)===clean(third.en))||
+    first.some(x=>clean(x.en)===clean(assessed[2].en)))throw Error('Reading reveals a writing answer');
  return [...first,third];
 }
 window.EJVariety={curated,practice,weekModels,readingModels,teachingNotes,normalized:clean,
@@ -104,6 +131,7 @@ window.EJVariety={curated,practice,weekModels,readingModels,teachingNotes,normal
    const p=practice(i),r=readingModels(i);
    if(p.length!==3||new Set(p.map(x=>clean(x.en))).size!==3)issues.push('Lesson '+i+': repeated writing targets');
    if(r.some(x=>clean(x.en)===clean(p[2].en)))issues.push('Lesson '+i+': writing answer shown in reading');
+   if(i%6>0&&r.some(x=>p.some(y=>clean(x.en)===clean(y.en))))issues.push('Lesson '+i+': duplicate same-day grammar in reading');
   }
   return {curatedWeeks:bank.length,curatedLessons:bank.length*6,issues};
  }
