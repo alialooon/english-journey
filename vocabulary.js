@@ -1,6 +1,60 @@
 /* English Journey — lexical learning with active recall and day-spaced review.
    This module runs in the same (non-module) browser scope as engine.js. */
 const VOCAB_INTERVALS = [1,3,7,14,30,60,90];
+// Original Russian-only usage cues for 48 A0 words; no future English grammar.
+const VOCAB_USAGE=Object.freeze({
+  "hello": "Нейтральное приветствие.",
+  "goodbye": "Прощание при уходе.",
+  "name": "Имя человека вообще.",
+  "country": "Страна, откуда приехал человек.",
+  "tourist": "Человек, который путешествует.",
+  "friend": "Человек, с которым дружим.",
+  "please": "Вежливая просьба.",
+  "thank you": "Благодарность за помощь.",
+  "hi": "Короткое неформальное приветствие.",
+  "good morning": "Приветствие утром.",
+  "good afternoon": "Приветствие после полудня.",
+  "good evening": "Приветствие вечером.",
+  "good night": "Пожелание перед сном, а не приветствие.",
+  "see you": "Неформальное прощание до следующей встречи.",
+  "welcome": "Приветствие пришедшего гостя.",
+  "excuse me": "Вежливо привлечь внимание.",
+  "sorry": "Извиниться за свою ошибку.",
+  "yes": "Утвердительный ответ.",
+  "no": "Отрицательный ответ.",
+  "okay": "«Ладно, договорились».",
+  "fine": "«У меня всё хорошо».",
+  "great": "Радостное одобрение.",
+  "nice": "Приятный человек или предмет.",
+  "happy": "Радостное настроение.",
+  "sad": "Грустное настроение.",
+  "first name": "Личное имя в анкете, не фамилия.",
+  "last name": "Фамилия в анкете.",
+  "age": "Возраст человека.",
+  "years old": "Часть выражения «Мне ... лет».",
+  "person": "Один человек.",
+  "people": "Люди, больше одного человека.",
+  "man": "Взрослый мужчина.",
+  "woman": "Взрослая женщина.",
+  "child": "Один ребёнок.",
+  "family": "Родственники, члены семьи.",
+  "mother": "Мама.",
+  "father": "Папа.",
+  "sister": "Сестра.",
+  "brother": "Брат.",
+  "husband": "Муж в семье.",
+  "wife": "Жена в семье.",
+  "language": "Язык общения.",
+  "english": "Английский язык.",
+  "russian": "Русский язык.",
+  "i": "Говорим о себе.",
+  "you": "Обращаемся к собеседнику.",
+  "he": "Говорим о мужчине или мальчике.",
+  "she": "Говорим о женщине или девочке."
+});
+function vocabUsage(item){return item?.week===0?VOCAB_USAGE[String(item.en).toLowerCase()]||'':''}
+function vocabContext(item){const hint=vocabUsage(item);return hint?'<p class="vocab-usage">Ситуация: '+esc(hint)+'</p>':''}
+
 const VOCAB_BANK = courses.map((lesson, week) => {
  const entries = [...lesson.words, ...VOCAB_EXTRA[week]];
  const seen = new Set();
