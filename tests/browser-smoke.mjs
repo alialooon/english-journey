@@ -71,7 +71,7 @@ await scenario('prerequisite audit covers all 600 lessons: no future word in les
  });
  const pane=await page.locator('.known-models').innerText();
  for(const model of intro)assert.equal(pane.includes(model),false,'Finished answers must not appear intact in the teaching panel');
- assert.ok(pane.includes('ВОПРОС:'),'Question order must be explicitly taught');
+ assert.ok(pane.includes('I = я'),'First lesson should explain the initial grammar before practice');
  assert.equal((await page.evaluate(()=>EJVariety.audit())).issues.length,0);
  const contract=await page.evaluate(()=>EJLanguageContract.verify());
  assert.equal(contract.models,300);
@@ -81,7 +81,7 @@ await scenario('prerequisite audit covers all 600 lessons: no future word in les
  });
  const quiz=await page.locator('.questiongroup').allInnerTexts();
  for(const q of quiz)assert.ok(!q.includes('welcome'),'No future vocabulary even in multiple-choice options');
- assert.match(await page.locator('.reading-source').innerText(),/tourist/i);
+ assert.match(await page.locator('.reading-source').innerText(),/Alex/i);
  assert.equal((await page.locator('.reading-source').innerText()).includes('Mia'),false,'Untaught long reading hidden');
 });
 await scenario('question and statement meaning agrees in both languages for all lessons',async page=>{
@@ -117,11 +117,11 @@ await scenario('question and statement meaning agrees in both languages for all 
  assert.deepEqual(results.issues,[]);
  assert.equal(results.firstQuestion.ru,'Ты из Испании?');
  assert.equal(results.firstQuestion.en,'Are you from Spain?');
- assert.match(results.reading,/Are you a tourist\?/);
+ assert.match(results.reading,/I am Alex\./);
  await page.locator('[data-open="0"]').first().click();
  await page.evaluate(()=>{const r=record(0);r.steps[1]=true;r.flowStep=1;save();render();});
  assert.equal((await page.locator('.known-models').innerText()).includes('Are you from Spain?'),false);
- assert.match(await page.locator('.known-models').innerText(),/ВОПРОС:/);
+ assert.match(await page.locator('.known-models').innerText(),/I = я/);
 });
 
 await scenario('diagnostic visits all six variants, no repeated attempted tasks',async page=>{
@@ -317,7 +317,7 @@ await scenario('A0: Russian prompts and dialog use only previously taught materi
  assert.equal(translated,4,'Exactly three prior vocabulary prompts plus one taught grammar phrase');
  assert.match(await page.locator('.writing-item').first().innerText(),/Переведи на английский: «привет»/);
  assert.equal(await page.locator('.writing-item .writing-ru').nth(3).innerText(),
-  'Переведи на английский: «Она моя подруга.»');
+  'Переведи на английский: «Я Анна.»');
  await page.locator('[data-dialog-path="1"]').click();
  assert.match(await page.locator('.course-meaning').innerText(),/показанных в разделе теории/);
  const first=await page.evaluate(()=>skillItem().dialogues[1].turns[0].correct);
