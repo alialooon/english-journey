@@ -12,7 +12,7 @@ const sandbox=vm.createContext({console,window:{},Math,Date});
 for(const file of source)vm.runInContext(fs.readFileSync(file,'utf8'),sandbox,{filename:file});
 vm.runInContext(String.raw`const PROFILES={standard:{questions:4},boost:{questions:6},review:{questions:3}};
 let dayFocus=0,total=600;
-let qlist=()=>[],skillItem=()=>({}),skillReadingPane=()=>'',skillDialogPane=()=>'',lesson=()=>'';
+let qlist=()=>[],skillItem=()=>({}),skillReadingPane=()=>'',skillDialogPane=()=>'',lesson=()=>'',topicBank=()=>[];
 let theoryPane=(u)=>'<h3>'+u.grammar+'</h3><p>'+u.theory+'</p><div class="notes">'+u.rule+'</div><h4>Примеры</h4>'+
 u.examples.map(pair=>'<div class="ex"><b>'+pair[0]+'</b><span>'+pair[1]+'</span></div>').join('')+
 '<p class="disclaimer">Изучи правило</p><div class="skill-section">Упражнения</div>';
@@ -41,7 +41,7 @@ const output=vm.runInContext(String.raw`(()=>{
   }else for(const m of assessed)if(!text.includes(m.en))
    errors.push({lesson:i,punctuationNotPreserved:m.en});
  }
- return {contract,variety:window.EJVariety.audit(),errors,firstQuestion:SKILLS_DATA[0].grammar[2],
+ return {contract,variety:window.EJVariety.audit(),foundation:window.EJVariety.foundationAudit(),checkpoint:topicBank(0),errors,firstQuestion:SKILLS_DATA[0].grammar[2],
   originalImperative:SKILLS_DATA[24].grammar[1],correctedQuestion:SKILLS_DATA[94].grammar[0]};
 })()`,sandbox);
 assert.equal(output.contract.models,300);
@@ -49,6 +49,10 @@ assert.equal(output.contract.topics,100);
 assert.equal(output.contract.errors.length,0);
 assert.equal(output.variety.curatedLessons,36);
 assert.equal(output.variety.issues.length,0);
+assert.equal(output.foundation.length,0);
+assert.equal(output.checkpoint.filter(x=>x.type==='grammar').length,18);
+assert.equal(output.checkpoint.filter(x=>x.type==='reading').length,3);
+for(const row of output.checkpoint){assert.ok(!/\\b(?:a|an|the)\\b/i.test([row.prompt,...row.options,row.passage||''].join(' ')), 'First-topic assessment has untaught articles');}
 assert.equal(output.errors.length,0,JSON.stringify(output.errors.slice(0,5)));
 assert.equal(output.firstQuestion.en,'Are you from Spain?');
 assert.equal(output.firstQuestion.ru,'Ты из Испании?');
@@ -57,4 +61,5 @@ assert.equal(output.originalImperative.ru,'Не пользуйтесь лифт�
 assert.equal(output.correctedQuestion.en,"Why don't we split the tasks between us?");
 console.log('PASS: 100 topics, 300 bilingual sentence contracts, 600 lessons; every question has the right punctuation.');
 console.log('PASS: varied original foundation lessons with no answer leaks into teaching or reading.');
+console.log('PASS: A0 starts without articles, progressive tokens, and safe thematic checkpoint.');
 console.log('PASS: original imperative remains imperative; unnatural why-question corrected.');

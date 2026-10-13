@@ -37,7 +37,7 @@ async function scenario(label,run){
 await scenario('startup, 100 topics, 600 lessons, optional listening',async page=>{
  assert.equal(await page.evaluate(()=>courses.length),100);
  assert.equal(await page.evaluate(()=>total),600);
- assert.equal(await page.evaluate(()=>APP_VERSION),'13.9.0');
+ assert.equal(await page.evaluate(()=>APP_VERSION),'13.10.0');
  assert.equal(await page.evaluate(()=>nextTask().type),'lesson');
  await page.locator('[data-open="0"]').first().click();
  const r=await page.evaluate(()=>({steps:record(0).steps,blocked:nextTask().type}));
@@ -71,7 +71,7 @@ await scenario('prerequisite audit covers all 600 lessons: no future word in les
  });
  const pane=await page.locator('.known-models').innerText();
  for(const model of intro)assert.equal(pane.includes(model),false,'Finished answers must not appear intact in the teaching panel');
- assert.ok(pane.includes('ВОПРОС:'),'Question order must be explicitly taught');
+ assert.ok(pane.includes('I = я'),'First lesson should explain the initial grammar before practice');
  assert.equal((await page.evaluate(()=>EJVariety.audit())).issues.length,0);
  const contract=await page.evaluate(()=>EJLanguageContract.verify());
  assert.equal(contract.models,300);
@@ -81,8 +81,8 @@ await scenario('prerequisite audit covers all 600 lessons: no future word in les
  });
  const quiz=await page.locator('.questiongroup').allInnerTexts();
  for(const q of quiz)assert.ok(!q.includes('welcome'),'No future vocabulary even in multiple-choice options');
- assert.match(await page.locator('.reading-source').innerText(),/tourist/i);
- assert.equal((await page.locator('.reading-source').innerText()).includes('Mia'),false,'Untaught long reading hidden');
+ assert.match(await page.locator('.reading-source').innerText(),/Alex/i);
+ assert.equal((await page.locator('.reading-source').innerText()).includes('My name is Mia'),false,'Untaught long reading hidden');
 });
 await scenario('question and statement meaning agrees in both languages for all lessons',async page=>{
  const results=await page.evaluate(()=>{
@@ -117,11 +117,11 @@ await scenario('question and statement meaning agrees in both languages for all 
  assert.deepEqual(results.issues,[]);
  assert.equal(results.firstQuestion.ru,'Ты из Испании?');
  assert.equal(results.firstQuestion.en,'Are you from Spain?');
- assert.match(results.reading,/Are you a tourist\?/);
+ assert.match(results.reading,/I am Alex\./);
  await page.locator('[data-open="0"]').first().click();
  await page.evaluate(()=>{const r=record(0);r.steps[1]=true;r.flowStep=1;save();render();});
  assert.equal((await page.locator('.known-models').innerText()).includes('Are you from Spain?'),false);
- assert.match(await page.locator('.known-models').innerText(),/ВОПРОС:/);
+ assert.match(await page.locator('.known-models').innerText(),/I = я/);
 });
 
 await scenario('diagnostic visits all six variants, no repeated attempted tasks',async page=>{
@@ -254,7 +254,7 @@ await scenario('lesson follows words -> theory -> quiz -> dialogue, keeps progre
  assert.equal(await page.evaluate(()=>EnglishJourneyFlow.current()),0);
  assert.equal(await page.locator('.journey-step.active strong').innerText(),'Слова и выражения');
  assert.equal(await page.locator('.journey-step').count(),4);
- assert.equal(await page.locator('[data-journey-next]').isDisabled(),true);
+ assert.equal(await page.locator('[data-journey-next]').count(),0,'Only actionable next buttons should be visible');
  assert.equal(await page.evaluate(()=>record(0).steps[2]),true,'Listening never blocks the flow');
  await page.reload({waitUntil:'load'});
  await page.locator('[data-open="0"]').first().click();
@@ -297,8 +297,10 @@ await scenario('lesson follows words -> theory -> quiz -> dialogue, keeps progre
   await page.locator('[data-writing-answer="'+item.id+'"]').fill(item.en);
   await page.locator('[data-writing-check="'+item.id+'"]').click();
  }
- await page.locator('[data-mark="4"]').click();
+ assert.equal(await page.locator('[data-mark="4"]').count(),0,'Redundant completion control removed');
  assert.equal(await page.evaluate(()=>!!record(0).doneAt),true);
+  assert.equal(await page.locator('.journey-current .writing-lesson .donebanner').count(),0,'No redundant completion badge');
+  assert.equal(await page.locator('[data-journey-next]').count(),1,'Completed stage exposes one next action');
  await page.locator('[data-journey-next]').click();
  assert.equal(await page.evaluate(()=>dayFocus),1);
  assert.equal(await page.evaluate(()=>EnglishJourneyFlow.current()),0);
@@ -315,9 +317,10 @@ await scenario('A0: Russian prompts and dialog use only previously taught materi
  assert.equal(await page.locator('#lesson-writing').count(),0,'Old meaningless free-text input must be gone');
  const translated=await page.locator('.writing-item').count();
  assert.equal(translated,4,'Exactly three prior vocabulary prompts plus one taught grammar phrase');
- assert.match(await page.locator('.writing-item').first().innerText(),/Переведи на английский: «привет»/);
+ assert.match(await page.locator('.writing-lesson h3').innerText(),/Переведи на английский/);
+  assert.equal((await page.locator('.writing-item .writing-ru').first().innerText()),'привет');
  assert.equal(await page.locator('.writing-item .writing-ru').nth(3).innerText(),
-  'Переведи на английский: «Она моя подруга.»');
+  'Я Анна.');
  await page.locator('[data-dialog-path="1"]').click();
  assert.match(await page.locator('.course-meaning').innerText(),/показанных в разделе теории/);
  const first=await page.evaluate(()=>skillItem().dialogues[1].turns[0].correct);
@@ -330,7 +333,7 @@ await scenario('A0: Russian prompts and dialog use only previously taught materi
  await page.locator('[data-writing-answer="0"]').fill('country friend thank you please hello');
  await page.locator('[data-writing-check="0"]').click();
  assert.equal(await page.evaluate(()=>Boolean(record(0).writingValidated)),false);
- assert.equal(await page.locator('[data-mark="4"]').isDisabled(),true);
+ assert.equal(await page.locator('[data-journey-next]').count(),0,'No continuation before independent answers');
  await page.locator('[data-writing-answer="0"]').fill('hello');
  await page.locator('[data-writing-check="0"]').click();
  const others=await page.evaluate(()=>EJWritingLesson.prompts().slice(1));
@@ -397,7 +400,7 @@ await scenario('hint and skip defer a word, next lesson demands different same-t
   await page.locator('[data-writing-answer="'+item.id+'"]').fill(item.en);
   await page.locator('[data-writing-check="'+item.id+'"]').click();
  }
- await page.locator('[data-mark="4"]').click();
+ assert.equal(await page.locator('[data-mark="4"]').count(),0,'Redundant completion control removed');
  assert.equal(await page.evaluate(()=>Boolean(record(0).doneAt)),true);
  await page.locator('[data-journey-next]').click();
  assert.equal(await page.evaluate(()=>page),'reinforcement');
