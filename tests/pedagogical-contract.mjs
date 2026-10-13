@@ -50,6 +50,11 @@ assert.equal(output.contract.errors.length,0);
 assert.equal(output.variety.curatedLessons,36);
 assert.equal(output.variety.issues.length,0);
 assert.equal(output.foundation.length,0);
+const starter=vm.runInContext('VOCAB_BANK[0].map(x=>({en:x.en,usage:vocabUsage(x)}))',sandbox);
+assert.equal(starter.length,48);
+assert.ok(starter.every(x=>x.usage),'All first-week vocabulary needs a unique usage situation');
+assert.notEqual(starter.find(x=>x.en==='hello').usage,starter.find(x=>x.en==='hi').usage);
+assert.equal(vm.runInContext('window.EJVariety.foundationPatterns.length',sandbox),6);
 assert.equal(output.checkpoint.filter(x=>x.type==='grammar').length,18);
 assert.equal(output.checkpoint.filter(x=>x.type==='reading').length,3);
 for(const row of output.checkpoint){assert.ok(!/\\b(?:a|an|the)\\b/i.test([row.prompt,...row.options,row.passage||''].join(' ')), 'First-topic assessment has untaught articles');}
