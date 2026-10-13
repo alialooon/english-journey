@@ -5,7 +5,7 @@
  * three explicitly introduced bilingual grammar models. */
 (function(){
 'use strict';
-const VERSION=1;
+const VERSION=2;
 function models(i){return SKILLS_DATA[Math.floor(i/6)].grammar;}
 function words(i){return vocabForLesson(i);}
 function material(i){
@@ -24,6 +24,7 @@ function pickOtherWords(i,target,n=2){
 }
 function choiceQuiz(i,n){
  const {grammar:g,words:v}=material(i);
+ const practice=window.EJVariety?.curated(i)?window.EJVariety.practice(i):null;
  return Array.from({length:n},(_,k)=>{
   const a=(k+Math.floor(i/6))%v.length;
   if(k%2===0){
@@ -31,13 +32,28 @@ function choiceQuiz(i,n){
    const opts=shuffle3([chosen.en,...alternatives.map(x=>x.en)],i*29+k);
    return ['Выбери перевод изученного слова «'+chosen.ru+'».',opts,opts.indexOf(chosen.en)];
   }
-  const target=window.EJLanguageContract.auditedPrompt(g[(k+i)%g.length]);
-  const opts=shuffle3([target.en,...g.filter(x=>x.en!==target.en).map(x=>x.en)].slice(0,3),i*31+k);
-  if(opts.length<3)throw Error('Совпадающие грамматические модели в уроке '+i);
+  const target=practice?practice[Math.floor(k/2)%2]:window.EJLanguageContract.auditedPrompt(g[(k+i)%g.length]);
+  const candidates=practice?
+   [...practice.slice(0,2).map(x=>x.en),...g.map(x=>x.en),...v.map(x=>x.en)]:
+   [target.en,...g.filter(x=>x.en!==target.en).map(x=>x.en)];
+  const distinct=[target.en,...candidates.filter(x=>x!==target.en&&x!==practice?.[2]?.en)];
+  const opts=shuffle3([...new Set(distinct)].slice(0,3),i*31+k);
+  if(opts.length<3)throw Error('Недостаточно изученных вариантов в уроке '+i);
   return ['Выбери английский перевод фразы «'+target.ru+'»',opts,opts.indexOf(target.en)];
  });
 }
 function reading(i){
+ if(window.EJVariety?.curated(i)){
+  // Reading uses two already practised sentences and a dedicated read-only model.
+  // The later free-writing answer must NOT be visible in this earlier stage.
+  const lines=window.EJVariety.readingModels(i);
+  const q=lines.map((model,j)=>{
+   const options=shuffle3(lines.map(x=>x.ru),i*23+j);
+   return {q:'Что означает предложение '+(j+1)+' из текста?',options,answer:options.indexOf(model.ru)};
+  });
+  return {kind:'Читаем знакомые конструкции в новом контексте',
+   text:lines.map(x=>x.en).join(' '),questions:q};
+ }
  const {grammar:g}=material(i);
  const rotated=g.map((_,j)=>window.EJLanguageContract.auditedPrompt(g[(i+j)%g.length]));
  const intro=rotated.map(x=>x.en).join(' ');
@@ -49,6 +65,7 @@ function reading(i){
 }
 function dialogues(i){
  const {grammar:g,words:v}=material(i);
+ const practice=window.EJVariety?.curated(i)?window.EJVariety.practice(i):null;
  const branches=[{title:'Разговор: изученные слова',turns:[]},{title:'Разговор: изученные фразы',turns:[]}];
  for(let k=0;k<2;k++){
   const a=v[(i+k)%v.length],b=v[(i+k+2)%v.length],other=v[(i+k+4)%v.length];
@@ -56,8 +73,12 @@ function dialogues(i){
   branches[0].turns.push({lead:'Собеседник просит назвать по-английски: «'+a.ru+'».',
    leadRu:'Тебе нужно ответить только словом или выражением из уже пройденных карточек.',
    choices:opts,correct:opts.indexOf(a.en),answer:a.en});
-  const target=window.EJLanguageContract.auditedPrompt(g[(i+k)%g.length]),others=g.filter(x=>x.en!==target.en);
-  const options=shuffle3([target.en,...others.map(x=>x.en)].slice(0,3),i*19+k);
+  const target=practice?practice[k]:window.EJLanguageContract.auditedPrompt(g[(i+k)%g.length]);
+  const others=practice?
+   [...practice.slice(0,2).map(x=>x.en),...g.map(x=>x.en),...v.map(x=>x.en)]:
+   g.filter(x=>x.en!==target.en).map(x=>x.en);
+  const choices=[target.en,...new Set(others.filter(x=>x!==target.en&&x!==practice?.[2]?.en))].slice(0,3);
+  const options=shuffle3(choices,i*19+k);
   branches[1].turns.push({lead:'Собеседник просит выразить по-английски: «'+target.ru+'».',
    leadRu:'Используй одну из трёх конструкций, показанных в разделе теории.',
    choices:options,correct:options.indexOf(target.en),answer:target.en});
@@ -77,6 +98,18 @@ skillItem=function(){
  return {...s,reading:reading(i),dialogues:dialogues(i)};
 };
 function teachPanel(i,u){
+ if(window.EJVariety?.curated(i)){
+  const expected=new Set(window.EJVariety.weekModels(i).map(x=>window.EJVariety.normalized(x.en)));
+  const examples=(u.examples||[]).filter(pair=>!expected.has(window.EJVariety.normalized(pair[0]))).slice(0,2);
+  return '<div class="known-models"><h4>Как строить новые предложения</h4>'+
+   '<p>Сначала изучи правило и карточки. Затем самостоятельно соедини ЗНАКОМЫЕ части. '+
+   'Полных ответов из упражнений здесь нет.</p>'+
+   '<div class="notes">'+esc(window.EJVariety.teachingNotes[Math.floor(i/6)])+'</div>'+
+   (examples.length?'<h4>Разобранные примеры — другие, чем в упражнениях</h4>'+
+   examples.map(pair=>'<div class="ex"><b lang="en">'+esc(pair[0])+'</b><span>'+esc(pair[1])+'</span></div>').join(''):'')+
+   '<p class="tiny">Вопрос: переставь вспомогательный глагол в начало. '+
+   'Утверждение: начни с того, о ком говоришь. Слова для всех ответов уже объяснены.</p></div>';
+ }
  const rows=models(i).map(m=>window.EJLanguageContract.auditedPrompt(m));
  const expected=new Set(rows.map(x=>x.en.replace(/[.!?]+$/,'').toLowerCase()));
  const safeExamples=(u.examples||[]).filter(pair=>!expected.has(String(pair[0]||'').replace(/[.!?]+$/,'').trim().toLowerCase())).slice(0,2);
@@ -121,7 +154,7 @@ theoryPane=function(u,day,r){
  const next=teaching.indexOf('<p class="disclaimer">',start);
  if(start<0||next<start)throw Error('Нет отдельного блока учебных примеров');
  teaching=teaching.slice(0,start)+teaching.slice(next);
- teaching=hideAnswers(teaching,models(dayFocus));
+ teaching=hideAnswers(teaching,window.EJVariety?.curated(dayFocus)?window.EJVariety.weekModels(dayFocus):models(dayFocus));
  return teaching+teachPanel(dayFocus,u)+practice;
 };
 skillReadingPane=function(r){
@@ -153,6 +186,13 @@ skillDialogPane=function(r){
 lesson=function(){
  const r=record(dayFocus);
  if(!r.prerequisiteAlignedV){
+  if(!r.steps[0]){
+   const sk=ejSkills(r);
+   sk.grammar.answers={};sk.grammar.passed=false;
+  }
+  if(!r.steps[4]){
+   r.writingAnswers={};r.writingDrafts={};r.writingValidated=false;
+  }
   if(!r.steps[3]){
    r.quizDraft={};
    const sk=ejSkills(r);
@@ -212,10 +252,12 @@ window.EJPrerequisites={
  // Automated audit: any task must come from a previously explained, exact model.
  validateLesson(i){
   const d=material(i),quiz=choiceQuiz(i,6),read=reading(i),dialog=dialogues(i);
-  const known=new Set([...d.words.map(x=>x.en),...d.grammar.map(x=>x.en)]);
+  const known=new Set([...d.words.map(x=>x.en),...d.grammar.map(x=>x.en),
+   ...(window.EJVariety?.curated(i)?window.EJVariety.practice(i).map(x=>x.en):[])]);
   const quizSafe=quiz.every(q=>q[2]>=0&&q[1].length===3&&q[1].every(option=>known.has(option)));
+  const expectedReading=window.EJVariety?.curated(i)?window.EJVariety.readingModels(i):d.grammar;
   const readingSafe=read.questions.every(q=>q.answer>=0&&
-   q.options.every(x=>d.grammar.some(m=>m.ru===x)));
+   q.options.every(x=>expectedReading.some(m=>m.ru===x)));
   const dialogueSafe=dialog.every(b=>b.turns.length===2&&b.turns.every(t=>
    t.correct>=0&&t.choices.every(option=>known.has(option))));
   const reviews=['vocabulary','grammar','writing','quiz','reading','dialogue'].map(kind=>
@@ -225,7 +267,8 @@ window.EJPrerequisites={
    task.options.length===3&&task.options.every(x=>known.has(x.value)||d.grammar.some(g=>g.ru===x.value)):
    known.has(task.expected));
   const punctuationSafe=d.grammar.every(m=>{const c=window.EJLanguageContract.auditedPrompt(m);return c.en===m.en&&c.ru===m.ru&&((c.type==='question')===c.ru.endsWith('?'));});
-  const answersNotLeaked=d.grammar.every(m=>!teachPanel(i,courses[Math.floor(i/6)]).includes('>'+m.en+'<'));
+  const assessed=window.EJVariety?.curated(i)?window.EJVariety.weekModels(i):d.grammar;
+  const answersNotLeaked=assessed.every(m=>!teachPanel(i,courses[Math.floor(i/6)]).includes('>'+m.en+'<'));
   return {ok:quizSafe&&readingSafe&&dialogueSafe&&writingSafe&&reviewSafe&&punctuationSafe&&answersNotLeaked,quizSafe,readingSafe,dialogueSafe,writingSafe,reviewSafe,punctuationSafe,answersNotLeaked};
  }
 };
