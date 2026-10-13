@@ -67,7 +67,7 @@ function skipOne(kind,ref){
   if(!r.vocabDoneIds.includes(id))r.vocabDoneIds.push(id);
   r.vocabRecall=null;r.vocabLastError=null;
   save();
-  if(items.every(x=>r.vocabDoneIds.includes(x.id)))markStep(1);else render();
+  if(vocabularyStepReady(dayFocus,r))markStep(1);else render();
   return;
  }
  if(kind==='grammar'){
