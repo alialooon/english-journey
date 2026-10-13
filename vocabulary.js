@@ -1,6 +1,57 @@
 /* English Journey — lexical learning with active recall and day-spaced review.
    This module runs in the same (non-module) browser scope as engine.js. */
 const VOCAB_INTERVALS = [1,3,7,14,30,60,90];
+// Only previously introduced words can enter the personal difficult-word list.
+// They are reviewed more often, but never repeat automatically twice the same day.
+const VOCAB_FOCUS_INTERVALS = [1,2,4,7,14,30,45];
+let VOCAB_BROWSE_LIMIT=18;
+let VOCAB_BROWSE_QUERY='';
+function vocabIntervalDays(s){
+ const intervals=s?.focus||((s?.lapses||0)>=2&&(s?.step||0)<4)?
+  VOCAB_FOCUS_INTERVALS:VOCAB_INTERVALS;
+ return intervals[Math.min(s?.step||0,intervals.length-1)];
+}
+function vocabFocusList(){
+ ensureVocabulary();
+ return Object.entries(store.vocabulary).filter(([id,s])=>VOCAB_MAP.has(id)&&s?.introducedAt)
+  .map(([id,s])=>({...VOCAB_MAP.get(id),focus:Boolean(s.focus),learned:s.introducedAt,step:s.step||0,due:s.due||''}))
+  .sort((a,b)=>Number(b.focus)-Number(a.focus)||b.learned.localeCompare(a.learned)||a.en.localeCompare(b.en));
+}
+function toggleWordFocus(id){
+ ensureVocabulary();const state=store.vocabulary[id];
+ if(!VOCAB_MAP.has(id)||!state?.introducedAt)return false;
+ state.focus=!state.focus;
+ if(state.focus){
+  const tomorrow=vocNext(1);
+  if(!state.due||state.due>tomorrow)state.due=tomorrow;
+ }
+ save();render();return true;
+}
+function personalVocabularyPane(){
+ const all=vocabFocusList();
+ if(!all.length)return '<div class="panel"><h3>Мои сложные слова</h3><p class="tiny">Здесь появятся уже изученные слова. Любое из них можно отметить для более частого повторения.</p></div>';
+ const q=VOCAB_BROWSE_QUERY.toLocaleLowerCase('ru').trim();
+ const selected=all.filter(item=>!q||item.en.toLowerCase().includes(q)||item.ru.toLocaleLowerCase('ru').includes(q));
+ const items=selected.slice(0,VOCAB_BROWSE_LIMIT);
+ return '<div class="panel personal-vocab"><h3>Мои сложные слова</h3>'+
+  '<p class="tiny">Отмечай только уже изученные слова, которые хочешь вспоминать чаще. Отметку всегда можно снять. '+
+  'Ошибки на повторении также временно сокращают интервалы.</p>'+
+  '<div class="personal-vocab-search"><input id="vocab-lookup" spellcheck="false" autocomplete="off" '+
+  'aria-label="Найти изученное слово" placeholder="Поиск среди изученных слов" value="'+esc(VOCAB_BROWSE_QUERY)+'">'+
+  '<button class="outline" data-vocab-find="1">Найти</button></div>'+
+  '<p class="tiny">Изучено: '+all.length+' · В личном списке: '+all.filter(x=>x.focus).length+'</p>'+
+  '<div class="personal-vocab-items">'+items.map(item=>
+   '<div class="personal-vocab-item"><div><strong lang="en">'+esc(item.en)+'</strong>'+
+   ' <span class="tiny">— '+esc(item.ru)+'</span>'+
+   (vocabContext(item)||'')+'</div>'+
+   '<button class="outline" data-vocab-focus="'+esc(item.id)+'" aria-pressed="'+item.focus+'">'+
+   (item.focus?'Убрать из сложных':'Повторять чаще')+'</button></div>').join('')+
+  (items.length===0?'<p class="tiny">Таких изученных слов пока нет.</p>':'')+
+  '</div>'+
+  (items.length<selected.length?'<button class="outline" data-vocab-more="1">Показать ещё слова</button>':'')+
+  '</div>';
+}
+
 // Original Russian-only usage cues for 48 A0 words; no future English grammar.
 const VOCAB_USAGE=Object.freeze({
   "hello": "Нейтральное приветствие.",
@@ -75,7 +126,7 @@ function vocToday(){return dateYMD(new Date())}
 function vocNext(days){return dateYMD(plusDays(new Date(),days))}
 function vocText(s){return String(s||'').trim().toLocaleLowerCase('en').replace(/[’`]/g,"'").replace(/[.,!?]/g,'').replace(/\s+/g,' ')}
 function vocabForLesson(day){const week=Math.floor(day/6),offset=(day%6)*8,bank=VOCAB_BANK[week]||[];return bank.length?Array.from({length:Math.min(8,bank.length)},(_,i)=>bank[(offset+i)%bank.length]):[];}
-function vocabDue(){ensureVocabulary();const now=vocToday();return Object.entries(store.vocabulary).filter(([id,s])=>VOCAB_MAP.has(id)&&s?.introducedAt&&s.due&&s.due<=now&&s.reviewedOn!==now).map(([id])=>VOCAB_MAP.get(id)).sort((a,b)=>{const da=store.vocabulary[a.id].due,db=store.vocabulary[b.id].due;return da.localeCompare(db)||a.week-b.week})}
+function vocabDue(){ensureVocabulary();const now=vocToday();return Object.entries(store.vocabulary).filter(([id,s])=>VOCAB_MAP.has(id)&&s?.introducedAt&&s.due&&s.due<=now&&s.reviewedOn!==now).map(([id])=>VOCAB_MAP.get(id)).sort((a,b)=>{const da=store.vocabulary[a.id].due,db=store.vocabulary[b.id].due;return da.localeCompare(db)||Number(Boolean(store.vocabulary[b.id].focus))-Number(Boolean(store.vocabulary[a.id].focus))||a.week-b.week})}
 function vocabStats(){ensureVocabulary();const recs=Object.values(store.vocabulary).filter(x=>x&&x.introducedAt);return {introduced:recs.length,mastered:recs.filter(x=>x.step>=4).length,needsWork:recs.filter(x=>x.lapses>0&&x.step<4).length,due:vocabDue().length,all:VOCAB_MAP.size}}
 function vocabProgressPreview(){const s=vocabStats();return '<div class="vocab-summary"><div><small>Начали изучать</small><strong>'+s.introduced+'</strong></div><div><small>Уверенно вспомнили с интервалами</small><strong>'+s.mastered+'</strong></div><div><small>Повторить сегодня</small><strong>'+s.due+'</strong></div><button class="outline" data-page="vocabulary">Открыть словарь →</button></div>'}
 // Small, due-only retrieval bridge inside the next lesson. It deliberately
@@ -142,7 +193,7 @@ function gradeLessonRecall(id,answer){
  state.correct=(state.correct||0)+(hadError?0:1);
  state.lapses=(state.lapses||0)+(hadError?1:0);
  state.step=hadError?0:Math.min(7,(state.step||0)+1);
- state.due=vocNext(hadError?1:VOCAB_INTERVALS[Math.min(state.step,VOCAB_INTERVALS.length-1)]);
+ state.due=vocNext(hadError?1:vocabIntervalDays(state));
  save();
  if(vocabularyStepReady(dayFocus,r)&&!r.steps[1])markStep(1);
  else render();
@@ -184,7 +235,7 @@ function vocabReviewItem(item,answer){
  const s=store.vocabulary[item.id],good=vocText(answer)===vocText(item.en);
  s.reviewedOn=vocToday();s.lastResult=good;s.correct=(s.correct||0)+(good?1:0);s.lapses=(s.lapses||0)+(good?0:1);
  s.step=good?Math.min(7,(s.step||0)+1):0;
- s.due=vocNext(good?VOCAB_INTERVALS[Math.min(s.step,VOCAB_INTERVALS.length-1)]:1);
+ s.due=vocNext(good?vocabIntervalDays(s):1);
  store.vocabFeedback={id:item.id,good,correct:item.en};save();render();
 }
 function vocabularyDashboard(){
@@ -192,10 +243,17 @@ function vocabularyDashboard(){
  return '<div class="lesson-head"><div><span class="pill">Адаптивный словарь</span><h2>Слова и выражения для путешествий</h2><p>Активное вспоминание · интервалы 1 / 3 / 7 / 14 / 30 дней · без увеличения уроков сверх 40 минут</p></div><button class="outline" data-page="lesson">Текущий урок →</button></div>'+vocabProgressPreview()+
  '<div class="panel"><h3>Повторение на сегодня</h3><p>Новые слова открываются в уроках. Здесь нужно вспомнить уже встречавшиеся выражения <b>без подсказки</b>. Успешные ответы увеличивают интервалы; ошибка назначает повторение на завтра.</p>'+ 
  (feedback?'<div class="result '+(feedback.good?'':'error')+'">'+(feedback.good?'Верно!':'Ошибка, повтори:')+' '+esc(feedback.correct)+'</div>':'')+
- (next?'<div class="vocab-practice"><div class="tiny">Осталось на сегодня: '+due.length+'</div><div class="vocab-prompt">'+esc(next.ru)+'</div>'+vocabContext(next)+'<input id="vocab-review-answer" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="Английский вариант по памяти" aria-label="Слово на английском"><button class="primary dark" data-vocab-review="'+esc(next.id)+'">Проверить и сохранить</button></div>':'<div class="donebanner">На сегодня запланированных повторений больше нет. Можно продолжать уроки.</div>')+'</div>'+ 
+ (next?'<div class="vocab-practice"><div class="tiny">Осталось на сегодня: '+due.length+'</div><div class="vocab-prompt">'+esc(next.ru)+'</div>'+vocabContext(next)+'<input id="vocab-review-answer" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="Английский вариант по памяти" aria-label="Слово на английском"><button class="primary dark" data-vocab-review="'+esc(next.id)+'">Проверить и сохранить</button></div>':'<div class="donebanner">На сегодня запланированных повторений больше нет. Можно продолжать уроки.</div>')+'</div>'+personalVocabularyPane()+
  '<div class="panel"><h3>Что значат показатели</h3><p class="tiny">В словарь входят отдельные слова и полезные выражения. «Освоено» считается только после нескольких правильных ответов в разные дни, а не после просмотра карточки. Это оценка словарной памяти, не официальный CEFR.</p><p class="tiny">В текущем банке '+s.all+' уникальных слов и выражений. Программа A1 содержит 25 тем; первые 6 тем A2 доступны. Полный A2 и B1 ещё требуют авторских уроков и комплексных экзаменов.</p></div>';
 }
 function vocabularyHandlers(){
+ document.querySelectorAll('[data-vocab-focus]').forEach(b=>b.onclick=()=>toggleWordFocus(b.dataset.vocabFocus));
+ const find=()=>{VOCAB_BROWSE_QUERY=document.getElementById('vocab-lookup')?.value||'';VOCAB_BROWSE_LIMIT=18;render();};
+ const input=document.getElementById('vocab-lookup');
+ if(input)input.onkeydown=e=>{if(e.key==='Enter')find()};
+ document.querySelectorAll('[data-vocab-find]').forEach(b=>b.onclick=find);
+ document.querySelectorAll('[data-vocab-more]').forEach(b=>b.onclick=()=>{VOCAB_BROWSE_LIMIT+=18;render()});
+
  document.querySelectorAll('[data-lesson-recall]').forEach(b=>{
   const action=()=>gradeLessonRecall(b.dataset.lessonRecall,document.getElementById('lesson-recall-answer')?.value||'');
   b.onclick=action;
