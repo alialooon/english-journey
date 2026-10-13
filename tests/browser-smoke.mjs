@@ -317,9 +317,10 @@ await scenario('A0: Russian prompts and dialog use only previously taught materi
  assert.equal(await page.locator('#lesson-writing').count(),0,'Old meaningless free-text input must be gone');
  const translated=await page.locator('.writing-item').count();
  assert.equal(translated,4,'Exactly three prior vocabulary prompts plus one taught grammar phrase');
- assert.match(await page.locator('.writing-item').first().innerText(),/Переведи на английский: «привет»/);
+ assert.match(await page.locator('.writing-lesson h3').innerText(),/Переведи на английский/);
+  assert.equal((await page.locator('.writing-item .writing-ru').first().innerText()),'привет');
  assert.equal(await page.locator('.writing-item .writing-ru').nth(3).innerText(),
-  'Переведи на английский: «Я Анна.»');
+  'Я Анна.');
  await page.locator('[data-dialog-path="1"]').click();
  assert.match(await page.locator('.course-meaning').innerText(),/показанных в разделе теории/);
  const first=await page.evaluate(()=>skillItem().dialogues[1].turns[0].correct);
