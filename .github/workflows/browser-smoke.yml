@@ -1,6 +1,7 @@
 name: English Journey browser smoke tests
 
 on:
+  pull_request:
   push:
     branches: [main]
     paths:
