@@ -177,7 +177,7 @@ theoryPane=function(u,day,r){
   const alphabet=dayFocus===0?
    '<div class="notes"><b>Английский алфавит (26 букв)</b><p>A B C D E F G H I J K L M N O P Q R S T U V W X Y Z</p></div>':'';
   return '<div class="split"><span class="pill">Теория и практика</span>'+
-   (r.steps[0]?'✅ Готово':'')+'</div>'+
+   (r?.steps?.[0]?'✅ Готово':'')+'</div>'+
    '<h3>Маленький шаг: только одна новая конструкция</h3>'+
    alphabet+window.EJVariety.foundationPanel(dayFocus,esc)+
    '<p class="disclaimer">Артикли и другие незнакомые правила здесь не требуются. Сначала изучи объяснение, затем переводи по-русски сформулированные задания.</p>'+
