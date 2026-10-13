@@ -66,3 +66,10 @@
  .journey-current .writing-inputrow{flex-direction:column}
  .journey-current .writing-inputrow button{width:100%}
 }
+
+/* Scaffolds: clickable sentence order and a one-word gap, no drag dependency. */
+.grammar-tiles{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.grammar-tile{min-width:45px;text-align:center}
+.grammar-tile:disabled{opacity:.34}
+.grammar-assembly{min-height:45px;border:1px dashed var(--stroke);border-radius:9px;padding:11px 12px;color:var(--ink);margin:9px 0}
+.grammar-gap{padding:10px 0;font-size:17px;line-height:1.5}
