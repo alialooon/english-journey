@@ -254,7 +254,7 @@ await scenario('lesson follows words -> theory -> quiz -> dialogue, keeps progre
  assert.equal(await page.evaluate(()=>EnglishJourneyFlow.current()),0);
  assert.equal(await page.locator('.journey-step.active strong').innerText(),'Слова и выражения');
  assert.equal(await page.locator('.journey-step').count(),4);
- assert.equal(await page.locator('[data-journey-next]').isDisabled(),true);
+ assert.equal(await page.locator('[data-journey-next]').count(),0,'Only actionable next buttons should be visible');
  assert.equal(await page.evaluate(()=>record(0).steps[2]),true,'Listening never blocks the flow');
  await page.reload({waitUntil:'load'});
  await page.locator('[data-open="0"]').first().click();
@@ -297,8 +297,10 @@ await scenario('lesson follows words -> theory -> quiz -> dialogue, keeps progre
   await page.locator('[data-writing-answer="'+item.id+'"]').fill(item.en);
   await page.locator('[data-writing-check="'+item.id+'"]').click();
  }
- await page.locator('[data-mark="4"]').click();
+ assert.equal(await page.locator('[data-mark="4"]').count(),0,'Redundant completion control removed');
  assert.equal(await page.evaluate(()=>!!record(0).doneAt),true);
+  assert.equal(await page.locator('.journey-current .writing-lesson .donebanner').count(),0,'No redundant completion badge');
+  assert.equal(await page.locator('[data-journey-next]').count(),1,'Completed stage exposes one next action');
  await page.locator('[data-journey-next]').click();
  assert.equal(await page.evaluate(()=>dayFocus),1);
  assert.equal(await page.evaluate(()=>EnglishJourneyFlow.current()),0);
@@ -330,7 +332,7 @@ await scenario('A0: Russian prompts and dialog use only previously taught materi
  await page.locator('[data-writing-answer="0"]').fill('country friend thank you please hello');
  await page.locator('[data-writing-check="0"]').click();
  assert.equal(await page.evaluate(()=>Boolean(record(0).writingValidated)),false);
- assert.equal(await page.locator('[data-mark="4"]').isDisabled(),true);
+ assert.equal(await page.locator('[data-journey-next]').count(),0,'No continuation before independent answers');
  await page.locator('[data-writing-answer="0"]').fill('hello');
  await page.locator('[data-writing-check="0"]').click();
  const others=await page.evaluate(()=>EJWritingLesson.prompts().slice(1));
@@ -397,7 +399,7 @@ await scenario('hint and skip defer a word, next lesson demands different same-t
   await page.locator('[data-writing-answer="'+item.id+'"]').fill(item.en);
   await page.locator('[data-writing-check="'+item.id+'"]').click();
  }
- await page.locator('[data-mark="4"]').click();
+ assert.equal(await page.locator('[data-mark="4"]').count(),0,'Redundant completion control removed');
  assert.equal(await page.evaluate(()=>Boolean(record(0).doneAt)),true);
  await page.locator('[data-journey-next]').click();
  assert.equal(await page.evaluate(()=>page),'reinforcement');
