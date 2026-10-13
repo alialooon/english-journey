@@ -116,7 +116,7 @@
  function productionFor(mode,attempt){
   const bounds=MODE_WEEKS[mode]||[0,12],rand=prng(seedHash(`selfguided-production-${mode}-${attempt}`));
   return shuffleItems(Array.from({length:bounds[1]-bounds[0]},(_,i)=>bounds[0]+i),rand).slice(0,4)
-   .map(w=>{const a=SKILLS_DATA[w].grammar;const q=a[Math.floor(rand()*a.length)];return {week:w,ru:q.ru,en:q.en};});
+   .map(w=>{const a=window.EJVariety?.curated(w*6)?window.EJVariety.weekModels(w*6):SKILLS_DATA[w].grammar;const q=a[Math.floor(rand()*a.length)];return {week:w,ru:q.ru,en:q.en};});
  }
  function ensureProduction(cur,mode,attempt){
   if(!Array.isArray(cur.production)||cur.production.length!==4)cur.production=productionFor(mode,attempt);
