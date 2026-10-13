@@ -79,7 +79,7 @@ function model(pair){
 const bank=authored.map((unit,w)=>{
  if(unit.length!==18)throw Error('Expected 18 independent practice sentences in topic '+w);
  const rows=unit.map(model),all=new Set(rows.map(x=>clean(x.en)));
- if(all.size!==18||new Set(rows.map(x=>clean(x.ru))).size!==18)throw Error('Duplicate sentence in topic '+w);
+ if(all.size!==18||new Set(rows.map(x=>x.ru.trim().toLowerCase())).size!==18)throw Error('Duplicate sentence in topic '+w);
  return rows;
 });
 function curated(i){return Math.floor(i/6)<bank.length;}
