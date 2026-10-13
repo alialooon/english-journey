@@ -183,6 +183,10 @@ theoryPane=function(u,day,r){
    '<p class="disclaimer">Артикли и другие незнакомые правила здесь не требуются. Сначала изучи объяснение, затем переводи по-русски сформулированные задания.</p>'+
    practice;
  }
+ if(dayFocus>=6&&dayFocus<18){
+  return '<div class="split"><span class="pill">Теория и практика</span></div>'+
+   window.EJA1Patterns.panel(dayFocus,esc,r)+practice;
+ }
  const start=teaching.indexOf('<h4>Примеры</h4>');
  const next=teaching.indexOf('<p class="disclaimer">',start);
  if(start<0||next<start)throw Error('Нет отдельного блока учебных примеров');
@@ -287,11 +291,11 @@ function reviewTask(debt){
 const previousFormulaWire=wire;
 wire=function(){
  previousFormulaWire();
- if(page!=='lesson'||dayFocus<0||dayFocus>=6)return;
+ if(page!=='lesson'||dayFocus<0||dayFocus>=18)return;
  document.querySelectorAll('[data-formula-check]').forEach(btn=>{
   const idx=Number(btn.dataset.formulaCheck);
   const action=()=>{
-   const row=window.EJVariety.foundationPatterns[dayFocus]?.drill[idx];
+   const row=(dayFocus<6?window.EJVariety.foundationPatterns[dayFocus]:window.EJA1Patterns.get(dayFocus))?.drill[idx];
    const r=record(dayFocus);
    if(!row||r.steps[0])return;
    const input=document.querySelector('[data-formula-input="'+idx+'"]');

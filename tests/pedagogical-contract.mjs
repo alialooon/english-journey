@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 const source=[
  'course_data.js','vocabulary_data.js','skills_data.js','a1_extension.js',
  'a2_extension.js','curriculum_data.js','advanced_course.js','quality_data.js',
- 'curriculum_contract.js','varied_curriculum.js','vocabulary.js'
+ 'curriculum_contract.js','varied_curriculum.js','a1_learning_patterns.js','vocabulary.js','a1_vocab_contexts.js'
 ];
 const sandbox=vm.createContext({console,window:{},Math,Date});
 for(const file of source)vm.runInContext(fs.readFileSync(file,'utf8'),sandbox,{filename:file});
@@ -49,6 +49,11 @@ assert.equal(output.contract.topics,100);
 assert.equal(output.contract.errors.length,0);
 assert.equal(output.variety.curatedLessons,36);
 assert.equal(output.variety.issues.length,0);
+const patterns=vm.runInContext('window.EJA1Patterns.audit()',sandbox);
+const lexical=vm.runInContext('window.EJA1VocabContext.audit()',sandbox);
+assert.equal(patterns.length,0,'Every drill differs from independent checked responses');
+assert.equal(lexical.covered,96);
+assert.equal(lexical.issues.length,0,'All 96 new lexical contexts are authored');
 assert.equal(output.foundation.length,0);
 const starter=vm.runInContext('VOCAB_BANK[0].map(x=>({en:x.en,usage:vocabUsage(x)}))',sandbox);
 assert.equal(starter.length,48);

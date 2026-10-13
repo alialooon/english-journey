@@ -52,7 +52,7 @@ const VOCAB_USAGE=Object.freeze({
   "he": "Говорим о мужчине или мальчике.",
   "she": "Говорим о женщине или девочке."
 });
-function vocabUsage(item){return item?.week===0?VOCAB_USAGE[String(item.en).toLowerCase()]||'':''}
+function vocabUsage(item){if(item?.week===0)return VOCAB_USAGE[String(item.en).toLowerCase()]||'';return window.EJA1VocabContext?.context(item)||'';}
 function vocabContext(item){const hint=vocabUsage(item);return hint?'<p class="vocab-usage">Ситуация: '+esc(hint)+'</p>':''}
 
 const VOCAB_BANK = courses.map((lesson, week) => {
