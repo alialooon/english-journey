@@ -158,8 +158,8 @@ const lessons=[
         "one bag"
       ],
       [
-        "Два билета",
-        "two tickets"
+        "Один билет",
+        "one ticket"
       ]
     ]
   },
