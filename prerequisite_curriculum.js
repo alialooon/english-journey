@@ -179,7 +179,7 @@ theoryPane=function(u,day,r){
   return '<div class="split"><span class="pill">Теория и практика</span>'+
    (r?.steps?.[0]?'✅ Готово':'')+'</div>'+
    '<h3>Маленький шаг: только одна новая конструкция</h3>'+
-   alphabet+window.EJVariety.foundationPanel(dayFocus,esc)+
+   alphabet+window.EJVariety.foundationPanel(dayFocus,esc,r)+
    '<p class="disclaimer">Артикли и другие незнакомые правила здесь не требуются. Сначала изучи объяснение, затем переводи по-русски сформулированные задания.</p>'+
    practice;
  }
@@ -282,6 +282,31 @@ function reviewTask(debt){
  }
  throw Error('Нет изученного примера для обязательного закрепления');
 }
+// Formula recall is a low-stakes preparation exercise, not a shortcut
+// to the required independent sentence translation.
+const previousFormulaWire=wire;
+wire=function(){
+ previousFormulaWire();
+ if(page!=='lesson'||dayFocus<0||dayFocus>=6)return;
+ document.querySelectorAll('[data-formula-check]').forEach(btn=>{
+  const idx=Number(btn.dataset.formulaCheck);
+  const action=()=>{
+   const row=window.EJVariety.foundationPatterns[dayFocus]?.drill[idx];
+   const r=record(dayFocus);
+   if(!row||r.steps[0])return;
+   const input=document.querySelector('[data-formula-input="'+idx+'"]');
+   const good=normalizeGrammar(input?.value||'')===normalizeGrammar(row[1]);
+   r.formulaDrills=r.formulaDrills||{};
+   r.formulaMistakes=r.formulaMistakes||{};
+   if(good)r.formulaDrills[idx]=true;
+   else r.formulaMistakes[idx]=true;
+   save();render();
+  };
+  btn.onclick=action;
+  const input=document.querySelector('[data-formula-input="'+idx+'"]');
+  if(input)input.onkeydown=event=>{if(event.key==='Enter')action()};
+ });
+};
 window.EJPrerequisites={
  words,models,quizFor:choiceQuiz,reading,dialogues,reviewTask,
  // Automated audit: any task must come from a previously explained, exact model.

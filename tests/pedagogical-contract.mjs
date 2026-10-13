@@ -12,7 +12,7 @@ const sandbox=vm.createContext({console,window:{},Math,Date});
 for(const file of source)vm.runInContext(fs.readFileSync(file,'utf8'),sandbox,{filename:file});
 vm.runInContext(String.raw`const PROFILES={standard:{questions:4},boost:{questions:6},review:{questions:3}};
 let dayFocus=0,total=600;
-let qlist=()=>[],skillItem=()=>({}),skillReadingPane=()=>'',skillDialogPane=()=>'',lesson=()=>'',topicBank=()=>[];
+let qlist=()=>[],skillItem=()=>({}),skillReadingPane=()=>'',skillDialogPane=()=>'',lesson=()=>'',topicBank=()=>[],wire=()=>{};
 let theoryPane=(u)=>'<h3>'+u.grammar+'</h3><p>'+u.theory+'</p><div class="notes">'+u.rule+'</div><h4>Примеры</h4>'+
 u.examples.map(pair=>'<div class="ex"><b>'+pair[0]+'</b><span>'+pair[1]+'</span></div>').join('')+
 '<p class="disclaimer">Изучи правило</p><div class="skill-section">Упражнения</div>';
@@ -50,6 +50,11 @@ assert.equal(output.contract.errors.length,0);
 assert.equal(output.variety.curatedLessons,36);
 assert.equal(output.variety.issues.length,0);
 assert.equal(output.foundation.length,0);
+const starter=vm.runInContext('VOCAB_BANK[0].map(x=>({en:x.en,usage:vocabUsage(x)}))',sandbox);
+assert.equal(starter.length,48);
+assert.ok(starter.every(x=>x.usage),'All first-week vocabulary needs a unique usage situation');
+assert.notEqual(starter.find(x=>x.en==='hello').usage,starter.find(x=>x.en==='hi').usage);
+assert.equal(vm.runInContext('window.EJVariety.foundationPatterns.length',sandbox),6);
 assert.equal(output.checkpoint.filter(x=>x.type==='grammar').length,18);
 assert.equal(output.checkpoint.filter(x=>x.type==='reading').length,3);
 for(const row of output.checkpoint){assert.ok(!/\\b(?:a|an|the)\\b/i.test([row.prompt,...row.options,row.passage||''].join(' ')), 'First-topic assessment has untaught articles');}

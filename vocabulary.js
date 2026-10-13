@@ -1,6 +1,60 @@
 /* English Journey — lexical learning with active recall and day-spaced review.
    This module runs in the same (non-module) browser scope as engine.js. */
 const VOCAB_INTERVALS = [1,3,7,14,30,60,90];
+// Original Russian-only usage cues for 48 A0 words; no future English grammar.
+const VOCAB_USAGE=Object.freeze({
+  "hello": "Нейтральное приветствие.",
+  "goodbye": "Прощание при уходе.",
+  "name": "Имя человека вообще.",
+  "country": "Страна, откуда приехал человек.",
+  "tourist": "Человек, который путешествует.",
+  "friend": "Человек, с которым дружим.",
+  "please": "Вежливая просьба.",
+  "thank you": "Благодарность за помощь.",
+  "hi": "Короткое неформальное приветствие.",
+  "good morning": "Приветствие утром.",
+  "good afternoon": "Приветствие после полудня.",
+  "good evening": "Приветствие вечером.",
+  "good night": "Пожелание перед сном, а не приветствие.",
+  "see you": "Неформальное прощание до следующей встречи.",
+  "welcome": "Приветствие пришедшего гостя.",
+  "excuse me": "Вежливо привлечь внимание.",
+  "sorry": "Извиниться за свою ошибку.",
+  "yes": "Утвердительный ответ.",
+  "no": "Отрицательный ответ.",
+  "okay": "«Ладно, договорились».",
+  "fine": "«У меня всё хорошо».",
+  "great": "Радостное одобрение.",
+  "nice": "Приятный человек или предмет.",
+  "happy": "Радостное настроение.",
+  "sad": "Грустное настроение.",
+  "first name": "Личное имя в анкете, не фамилия.",
+  "last name": "Фамилия в анкете.",
+  "age": "Возраст человека.",
+  "years old": "Часть выражения «Мне ... лет».",
+  "person": "Один человек.",
+  "people": "Люди, больше одного человека.",
+  "man": "Взрослый мужчина.",
+  "woman": "Взрослая женщина.",
+  "child": "Один ребёнок.",
+  "family": "Родственники, члены семьи.",
+  "mother": "Мама.",
+  "father": "Папа.",
+  "sister": "Сестра.",
+  "brother": "Брат.",
+  "husband": "Муж в семье.",
+  "wife": "Жена в семье.",
+  "language": "Язык общения.",
+  "english": "Английский язык.",
+  "russian": "Русский язык.",
+  "i": "Говорим о себе.",
+  "you": "Обращаемся к собеседнику.",
+  "he": "Говорим о мужчине или мальчике.",
+  "she": "Говорим о женщине или девочке."
+});
+function vocabUsage(item){return item?.week===0?VOCAB_USAGE[String(item.en).toLowerCase()]||'':''}
+function vocabContext(item){const hint=vocabUsage(item);return hint?'<p class="vocab-usage">Ситуация: '+esc(hint)+'</p>':''}
+
 const VOCAB_BANK = courses.map((lesson, week) => {
  const entries = [...lesson.words, ...VOCAB_EXTRA[week]];
  const seen = new Set();
@@ -60,7 +114,7 @@ function lessonRecallPane(index,r){
  const done=(r.lessonRecallDoneIds||[]).length;
  return '<div class="vocab-practice lesson-recall" aria-label="Интервальное повторение">'+
   '<div class="tiny">Вспомни слово из прошлых уроков · '+(done+1)+'/'+r.lessonRecallIds.length+'</div>'+
-  '<div class="vocab-prompt">'+esc(item.ru)+'</div>'+
+  '<div class="vocab-prompt">'+esc(item.ru)+'</div>'+vocabContext(item)+
   '<input id="lesson-recall-answer" spellcheck="false" autocomplete="off" autocapitalize="off" '+
   'aria-label="Напиши старое английское слово по памяти" placeholder="Перевод на английский">'+
   '<button class="primary dark" data-lesson-recall="'+esc(item.id)+'">Проверить</button>'+
@@ -109,9 +163,9 @@ function vocabularyLessonPane(unit,day,r,index){
  '<h3>Сначала пойми — затем вспомни без подсказки</h3>'+ 
  '<p>Ознакомься с английским выражением и переводом. После нажатия «Проверить себя» английский вариант скроется — напечатай его по памяти. Просмотр сам по себе не засчитывается.</p>'+ 
  (recall ?
- '<div class="vocab-practice"><div class="tiny">Как сказать по-английски?</div><div class="vocab-prompt">'+esc(item.ru)+'</div><input id="vocab-answer" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="Напиши английское слово или выражение" aria-label="Ответ на английском"><button class="primary dark" data-vocab-submit="'+esc(item.id)+'">Проверить ответ</button>'+ 
+ '<div class="vocab-practice"><div class="tiny">Как сказать по-английски?</div><div class="vocab-prompt">'+esc(item.ru)+'</div>'+vocabContext(item)+'<input id="vocab-answer" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="Напиши английское слово или выражение" aria-label="Ответ на английском"><button class="primary dark" data-vocab-submit="'+esc(item.id)+'">Проверить ответ</button>'+ 
  (err?'<div class="result error">Пока неверно. Правильный ответ: <b>'+esc(item.en)+'</b>. Повтори и напиши ещё раз — слово отметится для закрепления.</div>':'')+'</div>' :
- '<div class="vocab-practice"><div class="vocab-prompt">'+esc(item.en)+'</div><div class="vocab-translation">'+esc(item.ru)+'</div><button class="outline" data-vocab-say="'+esc(item.id)+'">▶ Произношение</button><button class="primary dark" data-vocab-recall="'+esc(item.id)+'">Проверить себя без подсказки →</button></div>')+
+ '<div class="vocab-practice"><div class="vocab-prompt">'+esc(item.en)+'</div><div class="vocab-translation">'+esc(item.ru)+'</div>'+vocabContext(item)+'<button class="outline" data-vocab-say="'+esc(item.id)+'">▶ Произношение</button><button class="primary dark" data-vocab-recall="'+esc(item.id)+'">Проверить себя без подсказки →</button></div>')+
  '<div class="tiny">Новые слова подобраны по теме «'+esc(unit.title)+'». Ошибочные слова возвращаются на повторение; многократный ввод сегодня не делает их «освоенными».</div>';
 }
 function vocabLearnAnswer(id,answer){
@@ -138,7 +192,7 @@ function vocabularyDashboard(){
  return '<div class="lesson-head"><div><span class="pill">Адаптивный словарь</span><h2>Слова и выражения для путешествий</h2><p>Активное вспоминание · интервалы 1 / 3 / 7 / 14 / 30 дней · без увеличения уроков сверх 40 минут</p></div><button class="outline" data-page="lesson">Текущий урок →</button></div>'+vocabProgressPreview()+
  '<div class="panel"><h3>Повторение на сегодня</h3><p>Новые слова открываются в уроках. Здесь нужно вспомнить уже встречавшиеся выражения <b>без подсказки</b>. Успешные ответы увеличивают интервалы; ошибка назначает повторение на завтра.</p>'+ 
  (feedback?'<div class="result '+(feedback.good?'':'error')+'">'+(feedback.good?'Верно!':'Ошибка, повтори:')+' '+esc(feedback.correct)+'</div>':'')+
- (next?'<div class="vocab-practice"><div class="tiny">Осталось на сегодня: '+due.length+'</div><div class="vocab-prompt">'+esc(next.ru)+'</div><input id="vocab-review-answer" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="Английский вариант по памяти" aria-label="Слово на английском"><button class="primary dark" data-vocab-review="'+esc(next.id)+'">Проверить и сохранить</button></div>':'<div class="donebanner">На сегодня запланированных повторений больше нет. Можно продолжать уроки.</div>')+'</div>'+ 
+ (next?'<div class="vocab-practice"><div class="tiny">Осталось на сегодня: '+due.length+'</div><div class="vocab-prompt">'+esc(next.ru)+'</div>'+vocabContext(next)+'<input id="vocab-review-answer" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="Английский вариант по памяти" aria-label="Слово на английском"><button class="primary dark" data-vocab-review="'+esc(next.id)+'">Проверить и сохранить</button></div>':'<div class="donebanner">На сегодня запланированных повторений больше нет. Можно продолжать уроки.</div>')+'</div>'+ 
  '<div class="panel"><h3>Что значат показатели</h3><p class="tiny">В словарь входят отдельные слова и полезные выражения. «Освоено» считается только после нескольких правильных ответов в разные дни, а не после просмотра карточки. Это оценка словарной памяти, не официальный CEFR.</p><p class="tiny">В текущем банке '+s.all+' уникальных слов и выражений. Программа A1 содержит 25 тем; первые 6 тем A2 доступны. Полный A2 и B1 ещё требуют авторских уроков и комплексных экзаменов.</p></div>';
 }
 function vocabularyHandlers(){
