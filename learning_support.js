@@ -189,6 +189,7 @@ function selectDifferent(rows,key,index,excluded){
  return all[(index%all.length+all.length)%all.length];
 }
 function question(debt){
+ if(window.EJPrerequisites)return window.EJPrerequisites.reviewTask(debt);
  const week=debt.week,u=courses[week],s=SKILLS_DATA[week],v=VOCAB_BANK[week]||[];
  const seed=seedHash(debt.id+'-'+debt.kind);
  const offset=(seed+debt.revision)%1000;

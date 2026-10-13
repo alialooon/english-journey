@@ -37,12 +37,47 @@ async function scenario(label,run){
 await scenario('startup, 100 topics, 600 lessons, optional listening',async page=>{
  assert.equal(await page.evaluate(()=>courses.length),100);
  assert.equal(await page.evaluate(()=>total),600);
- assert.equal(await page.evaluate(()=>APP_VERSION),'13.6.1');
+ assert.equal(await page.evaluate(()=>APP_VERSION),'13.7.0');
  assert.equal(await page.evaluate(()=>nextTask().type),'lesson');
  await page.locator('[data-open="0"]').first().click();
  const r=await page.evaluate(()=>({steps:record(0).steps,blocked:nextTask().type}));
  assert.equal(r.steps[2],true,'Listening must be pre-marked optional');
  assert.ok(await page.locator('#root').innerText());
+});
+await scenario('prerequisite audit covers all 600 lessons: no future word in lesson or deferred review',async page=>{
+ const audit=await page.evaluate(()=>{
+  const errors=[];
+  for(let i=0;i<600;i++){
+   const validation=EJPrerequisites.validateLesson(i);
+   if(!validation.ok)errors.push({i,...validation});
+  }
+  return {total:600,errors};
+ });
+ assert.deepEqual(audit.errors,[],'Every question, distractor, reading, dialog, deferred recall must be previously introduced');
+ await page.locator('[data-open="0"]').first().click();
+ const wordBank=await page.evaluate(()=>vocabForLesson(0).map(x=>x.en));
+ const review=await page.evaluate(()=>{
+  const a=EJPrerequisites.reviewTask({kind:'writing',lesson:0,ref:'text',revision:0});
+  const b=EJPrerequisites.reviewTask({kind:'vocabulary',lesson:0,ref:vocabForLesson(0)[0].id,revision:0});
+  return {a,b};
+ });
+ assert.equal(review.a.mode,'text','Legacy nine-word free-writing obligation is replaced');
+ assert.ok(wordBank.includes(review.a.expected));
+ assert.ok(wordBank.includes(review.b.expected));
+ assert.ok(!wordBank.includes('welcome'),'Welcome is not taught in the first day.');
+ const intro=await page.evaluate(()=>EJPrerequisites.models(0).map(m=>m.en));
+ await page.evaluate(()=>{
+  const r=record(0);r.steps[1]=true;r.flowStep=1;save();render();
+ });
+ const pane=await page.locator('.known-models').innerText();
+ for(const model of intro)assert.ok(pane.includes(model),'Every sentence used in the quiz must first appear in the theory');
+ await page.evaluate(()=>{
+  const r=record(0);r.steps[0]=true;r.flowStep=2;save();render();
+ });
+ const quiz=await page.locator('.questiongroup').allInnerTexts();
+ for(const q of quiz)assert.ok(!q.includes('welcome'),'No future vocabulary even in multiple-choice options');
+ assert.match(await page.locator('.reading-source').innerText(),/tourist/i);
+ assert.equal((await page.locator('.reading-source').innerText()).includes('Mia'),false,'Untaught long reading hidden');
 });
 await scenario('diagnostic visits all six variants, no repeated attempted tasks',async page=>{
  const result=await page.evaluate(()=>{
@@ -227,7 +262,7 @@ await scenario('lesson follows words -> theory -> quiz -> dialogue, keeps progre
 
 
 
-await scenario('A0: Russian prompts replace arbitrary text, spell phrase is explained before answering',async page=>{
+await scenario('A0: Russian prompts and dialog use only previously taught material',async page=>{
  await page.locator('[data-open="0"]').first().click();
  await page.evaluate(()=>{
   const r=record(0);r.steps[1]=true;r.steps[0]=true;r.steps[3]=true;r.flowStep=3;save();render();
@@ -239,11 +274,12 @@ await scenario('A0: Russian prompts replace arbitrary text, spell phrase is expl
  assert.equal(await page.locator('.writing-item .writing-ru').nth(3).innerText(),
   'Переведи на английский: «Ты из Испании?»');
  await page.locator('[data-dialog-path="1"]').click();
- assert.match(await page.locator('.course-meaning').innerText(),/Тебя зовут Алек/);
+ assert.match(await page.locator('.course-meaning').innerText(),/изученных в разделе теории/);
  const first=await page.evaluate(()=>skillItem().dialogues[1].turns[0].correct);
  await page.locator('[data-dialog-answer="'+first+'"]').click();
- assert.match(await page.locator('.course-meaning').innerText(),/произнести своё имя по буквам/);
- assert.match(await page.locator('.course-glossary').innerText(),/spell.*буквам/);
+ assert.match(await page.locator('.course-meaning').innerText(),/изученных в разделе теории/);
+ assert.equal((await page.locator('.journey-current').innerText()).includes('Could you spell it'),false,
+   'An untaught English phrase must not appear in the lesson dialog');
  const second=await page.evaluate(()=>skillItem().dialogues[1].turns[1].correct);
  await page.locator('[data-dialog-answer="'+second+'"]').click();
  await page.locator('[data-writing-answer="0"]').fill('country friend thank you please hello');
