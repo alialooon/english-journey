@@ -15,12 +15,12 @@ const authored=[
 ['Ты мой друг?','Are you my friend?'],['Он турист.','He is a tourist.'],['Она из Испании?','Is she from Spain?']
 ],
 [
-['Это сумка.','This is a bag.'],['То билет.','That is a ticket.'],['Это яблоко.','This is an apple.'],
-['То яблоко.','That is an apple.'],['Два билета, пожалуйста.','Two tickets, please.'],['Это билет.','This is a ticket.'],
-['Это один билет.','This is one ticket.'],['То сумка.','That is a bag.'],['Две сумки, пожалуйста.','Two bags, please.'],
-['Это билет?','Is this a ticket?'],['То яблоко?','Is that an apple?'],['То одна сумка.','That is one bag.'],
+['Это сумка.','This is a bag.'],['Вон то — билет.','That is a ticket.'],['Это яблоко.','This is an apple.'],
+['Вон то — яблоко.','That is an apple.'],['Два билета, пожалуйста.','Two tickets, please.'],['Это билет.','This is a ticket.'],
+['Это один билет.','This is one ticket.'],['Вон то — сумка.','That is a bag.'],['Две сумки, пожалуйста.','Two bags, please.'],
+['Это билет?','Is this a ticket?'],['Вон то — яблоко?','Is that an apple?'],['Это одна сумка.','This is one bag.'],
 ['Один билет, пожалуйста.','One ticket, please.'],['Это сумка?','Is this a bag?'],['Это яблоко?','Is this an apple?'],
-['Два билета.','Two tickets.'],['То билет?','Is that a ticket?'],['Одну сумку, пожалуйста.','One bag, please.']
+['Два билета.','Two tickets.'],['Вон то — билет?','Is that a ticket?'],['Одну сумку, пожалуйста.','One bag, please.']
 ],
 [
 ['Где отель?','Where is the hotel?'],['Здесь есть отель.','There is a hotel here.'],['Где станция?','Where is the station?'],
@@ -65,7 +65,7 @@ const readingOnly=[
 ];
 const teachingNotes=[
  'Местоимения и связка: I → am (я); you → are (ты); he/she → is (он/она). В вопросе am/are/is ставится ПЕРЕД местоимением. tourist — турист; friend — друг/подруга; my — мой/моя; from — из; Spain — Испания. Перед tourist нужен артикль a. Используй уже изученные карточки и меняй порядок слов по правилу.',
- 'This — это; that — то; a — перед согласным звуком; an — перед гласным. Один билет — one ticket, два билета — two tickets: обычно добавляем -s. bag — сумка; apple — яблоко; ticket — билет; please — пожалуйста. Для вопроса перемести is в начало — этот порядок знаком по первой теме.',
+ 'This — это; that — то (вон то); a — перед согласным звуком; an — перед гласным. Один билет — one ticket, два билета — two tickets: обычно добавляем -s. bag — сумка; apple — яблоко; ticket — билет; please — пожалуйста. Для вопроса перемести is в начало — этот порядок знаком по первой теме.',
  'Where — где; here — здесь; near — рядом; shop — магазин. Вопрос о месте: Where + is + предмет. There is + один предмет, There are + несколько. Потребуются hotel, station, airport из карточек; ticket и friend уже встречались ранее. Перед airport используй an.',
  'Can I have — можно мне; I would like — я хотел бы; I want — я хочу. После них выбирай нужное существительное из карточек: water, tea, coffee, menu, bill, sandwich. Артикль a нужен для одного исчисляемого предмета, а the в the menu / the bill обозначает конкретный предмет. «С собой» — to go.',
  'Привычки: I/you/we/they + work / drink / study; he/she + works / drinks. Отрицание: I/we/they + do not + действие; he/she + does not + действие БЕЗ окончания -s. every day — каждый день; live — жить; in London — в Лондоне. Для письма используй знакомые слова.',
