@@ -29,7 +29,7 @@ function writingPrompts(){
  const bank=vocabForLesson(dayFocus);
  const day=dayFocus%6,week=Math.floor(dayFocus/6),grammar=SKILLS_DATA[week]?.grammar||[];
  // One translation model not used in this lesson's two earlier grammar exercises.
- const third=grammar.length?grammar[(day+2)%grammar.length]:{ru:'Я путешествую.',en:'I travel'};
+ const third=window.EJVariety?.curated(dayFocus)?window.EJVariety.practice(dayFocus)[2]:grammar.length?grammar[(day+2)%grammar.length]:{ru:'Я путешествую.',en:'I travel'};
  const first=bank.slice(0,3);
  return [...first.map((item,i)=>({id:String(i),ru:item.ru,en:item.en,kind:'vocabulary'})),
   {id:'3',ru:third.ru,en:third.en,kind:'grammar'}];
