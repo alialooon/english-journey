@@ -34,7 +34,7 @@ function choiceQuiz(i,n){
   }
   const target=practice?practice[Math.floor(k/2)%2]:window.EJLanguageContract.auditedPrompt(g[(k+i)%g.length]);
   const candidates=practice?
-   [...practice.slice(0,2).map(x=>x.en),...g.map(x=>x.en),...v.map(x=>x.en)]:
+   [...practice.slice(0,2).map(x=>x.en),window.EJVariety.readingModels(i)[2].en]:
    [target.en,...g.filter(x=>x.en!==target.en).map(x=>x.en)];
   const distinct=[target.en,...candidates.filter(x=>x!==target.en&&x!==practice?.[2]?.en)];
   const opts=shuffle3([...new Set(distinct)].slice(0,3),i*31+k);
@@ -75,7 +75,7 @@ function dialogues(i){
    choices:opts,correct:opts.indexOf(a.en),answer:a.en});
   const target=practice?practice[k]:window.EJLanguageContract.auditedPrompt(g[(i+k)%g.length]);
   const others=practice?
-   [...practice.slice(0,2).map(x=>x.en),...g.map(x=>x.en),...v.map(x=>x.en)]:
+   [...practice.slice(0,2).map(x=>x.en),window.EJVariety.readingModels(i)[2].en]:
    g.filter(x=>x.en!==target.en).map(x=>x.en);
   const choices=[target.en,...new Set(others.filter(x=>x!==target.en&&x!==practice?.[2]?.en))].slice(0,3);
   const options=shuffle3(choices,i*19+k);
@@ -253,7 +253,9 @@ window.EJPrerequisites={
  validateLesson(i){
   const d=material(i),quiz=choiceQuiz(i,6),read=reading(i),dialog=dialogues(i);
   const known=new Set([...d.words.map(x=>x.en),...d.grammar.map(x=>x.en),
-   ...(window.EJVariety?.curated(i)?window.EJVariety.practice(i).map(x=>x.en):[])]);
+   ...(window.EJVariety?.curated(i)?[
+    ...window.EJVariety.practice(i).map(x=>x.en),
+    ...window.EJVariety.readingModels(i).map(x=>x.en)]:[])]);
   const quizSafe=quiz.every(q=>q[2]>=0&&q[1].length===3&&q[1].every(option=>known.has(option)));
   const expectedReading=window.EJVariety?.curated(i)?window.EJVariety.readingModels(i):d.grammar;
   const readingSafe=read.questions.every(q=>q.answer>=0&&
