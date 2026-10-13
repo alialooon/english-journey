@@ -37,7 +37,7 @@ async function scenario(label,run){
 await scenario('startup, 100 topics, 600 lessons, optional listening',async page=>{
  assert.equal(await page.evaluate(()=>courses.length),100);
  assert.equal(await page.evaluate(()=>total),600);
- assert.equal(await page.evaluate(()=>APP_VERSION),'13.11.0');
+ assert.equal(await page.evaluate(()=>APP_VERSION),'13.12.0');
  assert.equal(await page.evaluate(()=>nextTask().type),'lesson');
  await page.locator('[data-open="0"]').first().click();
  const r=await page.evaluate(()=>({steps:record(0).steps,blocked:nextTask().type}));
@@ -300,6 +300,52 @@ await scenario('no due vocabulary means no artificial extra requirement',async p
  await page.locator('[data-open="0"]').first().click();
  assert.deepEqual(await page.evaluate(()=>record(0).lessonRecallIds),[]);
  assert.equal(await page.locator('[data-lesson-recall]').count(),0);
+});
+await scenario('guided word order and gap fill use only taught words then require independent writing',async page=>{
+ await page.locator('[data-open="0"]').first().click();
+ await page.evaluate(()=>{
+  dayFocus=1;
+  const r=record(1);r.steps[1]=true;r.flowStep=1;page='lesson';save();render();
+ });
+ assert.equal(await page.evaluate(()=>grammarPracticeMode(0)),'order');
+ assert.equal(await page.locator('[data-grammar-token]').count(),3);
+ assert.equal(await page.locator('[data-grammar-check="0"]').isDisabled(),true);
+ const order=await page.evaluate(()=>{
+  const target=grammarExercises()[0].en.replace(/[.!?]+$/,'').split(/\s+/);
+  const tiles=grammarOrderTokens(grammarExercises()[0].en);
+  return target.map(word=>tiles.indexOf(word));
+ });
+ for(const idx of order)await page.locator('[data-grammar-token="0:'+idx+'"]').click();
+ assert.equal(await page.locator('[data-grammar-check="0"]').isDisabled(),false);
+ await page.locator('[data-grammar-check="0"]').click();
+ assert.equal(await page.evaluate(()=>ejSkills(record(1)).grammar.answers[0]?.ok),true);
+ const second=await page.evaluate(()=>grammarExercises()[1].en);
+ await page.locator('[data-grammar-input="1"]').fill(second);
+ await page.locator('[data-grammar-check="1"]').click();
+ assert.equal(await page.evaluate(()=>record(1).steps[0]),true);
+ await page.evaluate(()=>{
+  dayFocus=2;const r=record(2);r.steps[1]=true;r.flowStep=1;page='lesson';save();render();
+ });
+ assert.equal(await page.evaluate(()=>grammarPracticeMode(0)),'gap');
+ assert.equal(await page.locator('.grammar-gap').count(),1);
+ const missing=await page.evaluate(()=>{
+  const s=grammarExercises()[0].en;
+  return s.split(/\s+/)[grammarGapIndex(s)];
+ });
+ await page.locator('[data-grammar-input="0"]').fill(missing);
+ await page.locator('[data-grammar-check="0"]').click();
+ assert.equal(await page.evaluate(()=>ejSkills(record(2)).grammar.answers[0]?.ok),true);
+ const last=await page.evaluate(()=>grammarExercises()[1].en);
+ await page.locator('[data-grammar-input="1"]').fill(last);
+ await page.locator('[data-grammar-check="1"]').click();
+ assert.equal(await page.evaluate(()=>record(2).steps[0]),true);
+ await page.evaluate(()=>{
+  dayFocus=0;const r=record(0);r.steps[1]=true;r.flowStep=1;page='lesson';save();render();
+ });
+ await page.locator('.support-hint').first().click();
+ const hint=await page.locator('.support-tip').first().innerText();
+ assert.ok(hint.includes('I = я'));
+ assert.ok(!hint.includes('He is')&&!hint.includes('Are you'),'First day hint must not teach future grammar');
 });
 await scenario('lesson follows words -> theory -> quiz -> dialogue, keeps progress on reload',async page=>{
  await page.locator('[data-open="0"]').first().click();
