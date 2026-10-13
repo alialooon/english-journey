@@ -27,14 +27,16 @@ function ensureDebt(kind,ref,reason){
 function noteHint(kind,ref,node){
  const debt=ensureDebt(kind,ref,'hint');
  const r=record(dayFocus),u=courses[debt.week];
+ const lessonRule=dayFocus<6&&window.EJVariety?.foundationHint?
+  window.EJVariety.foundationHint(dayFocus):(u.rule||u.grammar);
  const hints={
   vocabulary:()=>{const item=VOCAB_MAP.get(debt.ref);return item?
    'Начни с «'+esc(item.en[0].toUpperCase())+'…»; всего слов в выражении: '+item.en.trim().split(/\s+/).length+'. Вспомни английский вариант по смыслу.':'Вспомни слово по контексту темы.';},
-  grammar:()=>{const rule=u.rule||u.grammar;return 'Используй правило текущей темы: '+esc(rule)+'. Проверь порядок слов в предложении.';},
-  quiz:()=> 'Вернись к формуле этой темы: '+esc(u.rule||u.grammar)+'. Выбери вариант, который лучше соответствует контексту.',
+  grammar:()=> 'Вспомни уже объяснённое правило: '+esc(lessonRule)+'. Проверь порядок слов.';,
+  quiz:()=> 'Вспомни уже объяснённое правило: '+esc(lessonRule)+'. Сравни варианты.',
   reading:()=> 'Вернись к тексту и найди именно информацию, о которой спрашивают. Не ориентируйся только на знакомые слова.',
   dialogue:()=> 'Представь, что ответ прозвучит вслух: должен ли он отвечать на вопрос или вежливо уточнять ситуацию?',
-  writing:()=>{const task=window.EJWritingLesson?.prompts().find(x=>x.id===debt.ref);return task?(task.kind==='grammar'?'Используй правило: '+esc(u.rule)+'. Сначала вспомни подлежащее и глагол.':'Это выражение было в карточках слов текущего урока. Вспомни его начало: «'+esc(task.en.slice(0,1))+'…».'):'Используй уже изученные слова и строй осмысленные фразы.';}
+  writing:()=>{const task=window.EJWritingLesson?.prompts().find(x=>x.id===debt.ref);return task?(task.kind==='grammar'?'Используй правило: '+esc(lessonRule)+'. Сначала вспомни подлежащее и глагол.':'Это выражение было в карточках слов текущего урока. Вспомни его начало: «'+esc(task.en.slice(0,1))+'…».'):'Используй уже изученные слова и строй осмысленные фразы.';}
  };
  save();
  const tip=document.createElement('p');tip.className='support-tip';tip.setAttribute('role','status');
