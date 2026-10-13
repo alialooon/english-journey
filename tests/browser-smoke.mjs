@@ -37,7 +37,7 @@ async function scenario(label,run){
 await scenario('startup, 100 topics, 600 lessons, optional listening',async page=>{
  assert.equal(await page.evaluate(()=>courses.length),100);
  assert.equal(await page.evaluate(()=>total),600);
- assert.equal(await page.evaluate(()=>APP_VERSION),'13.8.0');
+ assert.equal(await page.evaluate(()=>APP_VERSION),'13.9.0');
  assert.equal(await page.evaluate(()=>nextTask().type),'lesson');
  await page.locator('[data-open="0"]').first().click();
  const r=await page.evaluate(()=>({steps:record(0).steps,blocked:nextTask().type}));
