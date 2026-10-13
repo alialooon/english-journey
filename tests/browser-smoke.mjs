@@ -72,6 +72,7 @@ await scenario('prerequisite audit covers all 600 lessons: no future word in les
  const pane=await page.locator('.known-models').innerText();
  for(const model of intro)assert.equal(pane.includes(model),false,'Finished answers must not appear intact in the teaching panel');
  assert.ok(pane.includes('ВОПРОС:'),'Question order must be explicitly taught');
+ assert.equal((await page.evaluate(()=>EJVariety.audit())).issues.length,0);
  const contract=await page.evaluate(()=>EJLanguageContract.verify());
  assert.equal(contract.models,300);
  assert.deepEqual(contract.errors,[]);
@@ -102,7 +103,11 @@ await scenario('question and statement meaning agrees in both languages for all 
     if(src.toLowerCase().includes(model.en.toLowerCase()))issues.push({i,leaked:model.en});
    }
    const read=EJPrerequisites.reading(i);
-   for(const m of SKILLS_DATA[Math.floor(i/6)].grammar){
+   if(EJVariety.curated(i)){
+    const lesson=EJVariety.practice(i);
+    if(read.text.includes(lesson[2].en))issues.push({i,writingAnswerVisibleBeforeWriting:lesson[2].en});
+    if(new Set(lesson.map(x=>x.en)).size!==3)issues.push({i,duplicatePractice:true});
+   }else for(const m of SKILLS_DATA[Math.floor(i/6)].grammar){
     if(!read.text.includes(m.en))issues.push({i,textNotPunctuated:m.en});
    }
   }
@@ -111,7 +116,7 @@ await scenario('question and statement meaning agrees in both languages for all 
  assert.deepEqual(results.issues,[]);
  assert.equal(results.firstQuestion.ru,'Ты из Испании?');
  assert.equal(results.firstQuestion.en,'Are you from Spain?');
- assert.match(results.reading,/Are you from Spain\?/);
+ assert.match(results.reading,/Are you a tourist\?/);
  await page.locator('[data-open="0"]').first().click();
  await page.evaluate(()=>{const r=record(0);r.steps[1]=true;r.flowStep=1;save();render();});
  assert.equal((await page.locator('.known-models').innerText()).includes('Are you from Spain?'),false);
