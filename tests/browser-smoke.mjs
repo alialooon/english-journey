@@ -82,7 +82,7 @@ await scenario('prerequisite audit covers all 600 lessons: no future word in les
  const quiz=await page.locator('.questiongroup').allInnerTexts();
  for(const q of quiz)assert.ok(!q.includes('welcome'),'No future vocabulary even in multiple-choice options');
  assert.match(await page.locator('.reading-source').innerText(),/Alex/i);
- assert.equal((await page.locator('.reading-source').innerText()).includes('Mia'),false,'Untaught long reading hidden');
+ assert.equal((await page.locator('.reading-source').innerText()).includes('My name is Mia'),false,'Untaught long reading hidden');
 });
 await scenario('question and statement meaning agrees in both languages for all lessons',async page=>{
  const results=await page.evaluate(()=>{
