@@ -5,7 +5,7 @@
  * three explicitly introduced bilingual grammar models. */
 (function(){
 'use strict';
-const VERSION=2;
+const VERSION=3;
 function models(i){return SKILLS_DATA[Math.floor(i/6)].grammar;}
 function words(i){return vocabForLesson(i);}
 function material(i){
@@ -86,7 +86,30 @@ function dialogues(i){
  return branches;
 }
 const existingQlist=qlist,existingSkillItem=skillItem,existingTheory=theoryPane,
- existingReadPane=skillReadingPane,existingLesson=lesson;
+ existingReadPane=skillReadingPane,existingLesson=lesson,existingTopicBank=topicBank;
+// Topic checks and A1 exams must not accidentally pull pre-refactor prompts
+// containing a/an/the, which are not introduced in the first A0 topic.
+topicBank=function(w){
+ const pool=existingTopicBank(w);
+ if(w!==0)return pool;
+ const assessed=window.EJVariety.weekModels(0);
+ const grammar=assessed.map((m,k)=>{
+  const alts=[m.en,assessed[(k+1)%assessed.length].en,assessed[(k+2)%assessed.length].en];
+  const options=shuffle3(alts,13+k);
+  return {id:'a0-safe-grammar-'+k,type:'grammar',
+   prompt:'Выбери английский перевод «'+m.ru+'»',options,
+   answer:options.indexOf(m.en),review:'Повтори формы am, is и are, вопросы и from.'};
+ });
+ const read=window.EJVariety.readingModels(5),passage=read.map(x=>x.en).join(' ');
+ const reading=read.map((m,k)=>{
+  const options=shuffle3(read.map(x=>x.ru),31+k);
+  return {id:'a0-safe-reading-'+k,type:'reading',
+   prompt:'Что означает предложение «'+m.en+'»?',options,
+   answer:options.indexOf(m.ru),passage,
+   review:'Все слова из текста уже разобраны в первых шести уроках.'};
+ });
+ return pool.filter(q=>q.type==='vocabulary'||q.type==='listening').concat(grammar,reading);
+};
 qlist=function(u,day,profile){
  const w=courses.indexOf(u);
  const i=(w>=0?w:Math.floor(dayFocus/6))*6+day;
@@ -150,6 +173,16 @@ theoryPane=function(u,day,r){
  const at=original.indexOf(marker);
  if(at<0)throw Error('Не найден блок упражнения: недоступно для проверки');
  let teaching=original.slice(0,at),practice=original.slice(at);
+ if(dayFocus<6){
+  const alphabet=dayFocus===0?
+   '<div class="notes"><b>Английский алфавит (26 букв)</b><p>A B C D E F G H I J K L M N O P Q R S T U V W X Y Z</p></div>':'';
+  return '<div class="split"><span class="pill">Теория и практика</span>'+
+   (r.steps[0]?'✅ Готово':'')+'</div>'+
+   '<h3>Маленький шаг: только одна новая конструкция</h3>'+
+   alphabet+window.EJVariety.foundationPanel(dayFocus,esc)+
+   '<p class="disclaimer">Артикли и другие незнакомые правила здесь не требуются. Сначала изучи объяснение, затем переводи по-русски сформулированные задания.</p>'+
+   practice;
+ }
  const start=teaching.indexOf('<h4>Примеры</h4>');
  const next=teaching.indexOf('<p class="disclaimer">',start);
  if(start<0||next<start)throw Error('Нет отдельного блока учебных примеров');
@@ -212,7 +245,9 @@ function reviewTask(debt){
   grammar:'Переведи другое изученное предложение',writing:'Закрепи слово или фразу из этого урока',
   quiz:'Повтори изученное без подсказки',reading:'Проверь смысл знакомого предложения',
   dialogue:'Проверь знакомую реплику'}[debt.kind]||'Закрепи изученное';
- const prev=String(debt.ref),g=data.grammar,v=data.words;
+ const prev=String(debt.ref),
+ g=window.EJVariety?.curated(i)?window.EJVariety.practice(i):data.grammar,
+ v=data.words;
  if(debt.kind==='vocabulary'||(debt.kind==='writing'&&/^[012]$/.test(prev))||
     (debt.kind==='writing'&&prev==='text')){
   const excluded=debt.kind==='vocabulary'?prev:v[Number(prev)]?.id||'';
@@ -222,7 +257,7 @@ function reviewTask(debt){
    body:'Переведи на английский: «'+esc(row.ru)+'»',expected:row.en};
  }
  if(debt.kind==='grammar'||(debt.kind==='writing'&&prev==='3')){
-  const origin=debt.kind==='writing'?(i%6+2)%g.length:(i%6+Number(prev))%g.length;
+  const origin=debt.kind==='writing'?2:Math.max(0,Number(prev)||0)%g.length;
   const alternatives=g.filter(x=>x.en!==g[origin].en);
   const target=alternatives[rev%alternatives.length];
   return {mode:'text',kind:'grammar',label:prefix,
