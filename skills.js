@@ -87,7 +87,7 @@ function skillsHandlers(){
    const i=Number(b.dataset.grammarCheck),r=record(dayFocus),state=ejSkills(r).grammar;
    const raw=document.querySelector(`[data-grammar-input="${i}"]`)?.value||'';
    const target=grammarExercises()[i].en;
-   const expected=grammarPracticeMode(i)==='gap'?target.split(/\\s+/)[grammarGapIndex(target)]:target;
+   const expected=grammarPracticeMode(i)==='gap'?target.split(/\s+/)[grammarGapIndex(target)]:target;
    const ok=normalizeGrammar(raw)===normalizeGrammar(expected);
    state.answers[i]={ok,error:!ok};
    state.passed=[0,1].every(j=>state.answers[j]?.ok);
