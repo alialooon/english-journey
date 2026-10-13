@@ -264,7 +264,7 @@ window.EJPrerequisites={
    reviewTask({lesson:i,kind,ref:kind==='vocabulary'?d.words[0].id:'0',revision:0}));
   const writingSafe=words(i).slice(0,3).every(x=>known.has(x.en))&&d.grammar.some(x=>known.has(x.en));
   const reviewSafe=reviews.every(task=>task.mode==='choice'?
-   task.options.length===3&&task.options.every(x=>known.has(x.value)||d.grammar.some(g=>g.ru===x.value)):
+   task.options.length===3&&task.options.every(x=>known.has(x.value)||d.grammar.some(g=>g.ru===x.value)||expectedReading.some(g=>g.ru===x.value)):
    known.has(task.expected));
   const punctuationSafe=d.grammar.every(m=>{const c=window.EJLanguageContract.auditedPrompt(m);return c.en===m.en&&c.ru===m.ru&&((c.type==='question')===c.ru.endsWith('?'));});
   const assessed=window.EJVariety?.curated(i)?window.EJVariety.weekModels(i):d.grammar;
