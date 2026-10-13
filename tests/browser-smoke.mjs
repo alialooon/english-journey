@@ -37,7 +37,7 @@ async function scenario(label,run){
 await scenario('startup, 100 topics, 600 lessons, optional listening',async page=>{
  assert.equal(await page.evaluate(()=>courses.length),100);
  assert.equal(await page.evaluate(()=>total),600);
- assert.equal(await page.evaluate(()=>APP_VERSION),'13.14.0');
+ assert.equal(await page.evaluate(()=>APP_VERSION),'13.15.0');
  assert.equal(await page.evaluate(()=>nextTask().type),'lesson');
  await page.locator('[data-open="0"]').first().click();
  const r=await page.evaluate(()=>({steps:record(0).steps,blocked:nextTask().type}));
@@ -454,6 +454,48 @@ await scenario('contextual vocabulary extends to shopping and place names',async
   dayFocus=6;page='lesson';const r=record(6);r.flowStep=0;save();render();
  });
  assert.match(await page.locator('.vocab-usage').first().innerText(),/Ситуация:/);
+});
+await scenario('personal difficult words only from studied cards and shorter due intervals',async page=>{
+ await page.evaluate(()=>{
+  store.vocabulary.hello={introducedAt:'2026-10-01',due:'2999-12-30',step:2,correct:2,lapses:0};
+  store.vocabulary.goodbye={introducedAt:'2026-10-01',due:'2999-12-30',step:2,correct:2,lapses:0};
+  save();render();
+ });
+ await page.locator('[data-page="vocabulary"]').first().click();
+ assert.equal(await page.locator('[data-vocab-focus="hello"]').count(),1);
+ const unseen=await page.evaluate(()=>VOCAB_BANK[3].find(x=>!store.vocabulary[x.id]?.introducedAt).id);
+ assert.equal(await page.locator('[data-vocab-focus="'+unseen+'"]').count(),0,
+  'Never offer a future word in the personal list');
+ await page.locator('#vocab-lookup').fill('hello');
+ await page.locator('[data-vocab-find]').click();
+ assert.equal(await page.locator('[data-vocab-focus]').count(),1);
+ await page.locator('[data-vocab-focus="hello"]').click();
+ const marked=await page.evaluate(()=>({
+  focused:store.vocabulary.hello.focus,due:store.vocabulary.hello.due,tomorrow:vocNext(1),
+  dueAfterFocus:vocabIntervalDays({focus:true,step:3}),
+  normal:vocabIntervalDays({focus:false,step:3})
+ }));
+ assert.equal(marked.focused,true);
+ assert.equal(marked.due,marked.tomorrow,'Marking a learned word moves its next review to tomorrow');
+ assert.ok(marked.dueAfterFocus<marked.normal);
+ await page.locator('[data-vocab-focus="hello"]').click();
+ assert.equal(await page.evaluate(()=>Boolean(store.vocabulary.hello.focus)),false);
+ assert.equal(await page.evaluate(()=>toggleWordFocus('future-unseen')),false,
+  'Unknown words cannot enter required review');
+});
+await scenario('focus list controls adapted review but still requires correct recall',async page=>{
+ await page.evaluate(()=>{
+  store.vocabulary.hello={introducedAt:'2026-10-01',due:'2000-01-01',step:2,correct:1,lapses:1,focus:true};
+  save();render();
+ });
+ await page.locator('[data-page="vocabulary"]').first().click();
+ assert.equal(await page.locator('[data-vocab-review="hello"]').count(),1);
+ await page.locator('#vocab-review-answer').fill('hello');
+ await page.locator('[data-vocab-review="hello"]').click();
+ const status=await page.evaluate(()=>({word:store.vocabulary.hello,dueIn7:vocNext(7)}));
+ assert.equal(status.word.step,3);
+ assert.equal(status.word.due,status.dueIn7,'Difficult words must receive shorter spacing');
+ assert.equal(status.word.reviewedOn,await page.evaluate(()=>vocToday()));
 });
 await scenario('lesson follows words -> theory -> quiz -> dialogue, keeps progress on reload',async page=>{
  await page.locator('[data-open="0"]').first().click();

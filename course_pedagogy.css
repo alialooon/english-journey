@@ -89,3 +89,13 @@
 .formula-task input{flex:1;min-width:180px;color:var(--ink);background:var(--paper);border:1px solid var(--stroke);border-radius:9px;padding:10px;font:inherit}
 .vocab-usage{font-size:13px;color:var(--muted);line-height:1.5;margin:9px 0}
 @media(max-width:480px){.formula-grid{grid-template-columns:1fr}.formula-task .skill-inputrow button{width:auto}}
+
+/* Compact personal vocabulary selector; never shows cards that were not studied. */
+.personal-vocab-search{display:flex;gap:8px;margin:12px 0}
+.personal-vocab-search input{flex:1;min-width:0;border:1px solid var(--stroke);border-radius:9px;padding:10px;background:var(--paper);color:var(--ink);font:inherit}
+.personal-vocab-items{display:grid;gap:0;margin:12px 0}
+.personal-vocab-item{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--stroke)}
+.personal-vocab-item>div{min-width:0}
+.personal-vocab-item .vocab-usage{margin:4px 0 0}
+.personal-vocab-item button{flex-shrink:0}
+@media(max-width:440px){.personal-vocab-item{align-items:flex-start;flex-direction:column}.personal-vocab-item button{width:100%}.personal-vocab-search button{width:auto}}
