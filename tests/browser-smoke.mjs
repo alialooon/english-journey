@@ -311,7 +311,7 @@ await scenario('guided word order and gap fill use only taught words then requir
  assert.equal(await page.locator('[data-grammar-token]').count(),3);
  assert.equal(await page.locator('[data-grammar-check="0"]').isDisabled(),true);
  const order=await page.evaluate(()=>{
-  const target=grammarExercises()[0].en.replace(/[.!?]+$/,'').split(/\\s+/);
+  const target=grammarExercises()[0].en.replace(/[.!?]+$/,'').split(/\s+/);
   const tiles=grammarOrderTokens(grammarExercises()[0].en);
   return target.map(word=>tiles.indexOf(word));
  });
@@ -330,7 +330,7 @@ await scenario('guided word order and gap fill use only taught words then requir
  assert.equal(await page.locator('.grammar-gap').count(),1);
  const missing=await page.evaluate(()=>{
   const s=grammarExercises()[0].en;
-  return s.split(/\\s+/)[grammarGapIndex(s)];
+  return s.split(/\s+/)[grammarGapIndex(s)];
  });
  await page.locator('[data-grammar-input="0"]').fill(missing);
  await page.locator('[data-grammar-check="0"]').click();
