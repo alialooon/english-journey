@@ -48,7 +48,7 @@ assert.equal(output.contract.models,300);
 assert.equal(output.contract.topics,100);
 assert.equal(output.contract.errors.length,0);
 assert.equal(output.variety.curatedLessons,36);
-assert.deepEqual(output.variety.issues,[]);
+assert.equal(output.variety.issues.length,0);
 assert.equal(output.errors.length,0,JSON.stringify(output.errors.slice(0,5)));
 assert.equal(output.firstQuestion.en,'Are you from Spain?');
 assert.equal(output.firstQuestion.ru,'Ты из Испании?');
