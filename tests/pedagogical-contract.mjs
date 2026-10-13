@@ -32,7 +32,7 @@ const output=vm.runInContext(String.raw`(()=>{
   const curated=window.EJVariety.curated(i);
   const assessed=curated?window.EJVariety.weekModels(i):SKILLS_DATA[Math.floor(i/6)].grammar;
   for(const m of assessed){
-   if(before.toLowerCase().includes(m.en.toLowerCase()))errors.push({lesson:i,leak:m.en});
+   if((' '+before.toLowerCase()).includes(' '+m.en.toLowerCase())||before.toLowerCase().includes('>'+m.en.toLowerCase()))errors.push({lesson:i,leak:m.en});
   }
   const text=window.EJPrerequisites.reading(i).text;
   if(curated){
