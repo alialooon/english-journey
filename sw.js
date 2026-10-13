@@ -1,7 +1,7 @@
-/* English Journey 13.7 — atomic offline shell update.
+/* English Journey 13.8 — atomic offline shell update.
  * Never caches third-party audio or transfers learner data. */
-const CACHE_NAME='english-journey-local-v13-7-0';
-const ASSETS=['./','./index.html','./style.css','./authentic_lab.css','./diagnostic.css','./theme.css','./appearance.js','./lesson_flow.css','./lesson_flow.js','./learning_support.css','./learning_support.js','./prerequisite_curriculum.js','./course_pedagogy.css','./course_pedagogy.js',
+const CACHE_NAME='english-journey-local-v13-8-0';
+const ASSETS=['./','./index.html','./style.css','./authentic_lab.css','./diagnostic.css','./theme.css','./appearance.js','./lesson_flow.css','./lesson_flow.js','./learning_support.css','./learning_support.js','./prerequisite_curriculum.js','./curriculum_contract.js','./curriculum_contract.css','./course_pedagogy.css','./course_pedagogy.js',
  './course_data.js','./vocabulary_data.js','./skills_data.js','./a1_extension.js',
  './a2_extension.js','./curriculum_data.js','./advanced_course.js','./quality_data.js',
  './vocabulary.js','./skills.js','./engine.js','./advanced_hooks.js','./quality_runtime.js',

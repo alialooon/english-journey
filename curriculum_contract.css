@@ -1,0 +1,12 @@
+/* English Journey 13.8 — semantic teaching contract and question syntax. */
+.teaching-builder{margin:13px 0;padding:15px;border:1px solid var(--stroke);background:var(--paper);border-radius:13px}
+.teaching-builder>p{margin:9px 0;font-size:13px}
+.teaching-tokens{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 2px}
+.teaching-tokens>span{display:inline-flex;align-items:center;padding:7px 10px;border:1px solid var(--stroke);
+ background:var(--soft);border-radius:9px;font-weight:700;font-size:14px}
+.known-models{margin:20px 0}
+.known-models h4{margin:15px 0}
+.known-models>p{line-height:1.65}
+:root[data-theme="dark"] .teaching-builder{background:#19273a}
+:root[data-theme="dark"] .teaching-tokens>span{background:#2d284f;color:#e9e5ff;border-color:#625a8c}
+@media(max-width:650px){.teaching-builder{padding:12px}.teaching-tokens>span{font-size:13px}}

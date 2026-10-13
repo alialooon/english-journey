@@ -29,20 +29,20 @@ function choiceQuiz(i,n){
   if(k%2===0){
    const chosen=v[a],alternatives=pickOtherWords(i,chosen,2);
    const opts=shuffle3([chosen.en,...alternatives.map(x=>x.en)],i*29+k);
-   return ['Выбери перевод уже изученного слова: «'+chosen.ru+'».',opts,opts.indexOf(chosen.en)];
+   return ['Выбери перевод изученного слова «'+chosen.ru+'».',opts,opts.indexOf(chosen.en)];
   }
-  const target=g[(k+i)%g.length];
+  const target=window.EJLanguageContract.auditedPrompt(g[(k+i)%g.length]);
   const opts=shuffle3([target.en,...g.filter(x=>x.en!==target.en).map(x=>x.en)].slice(0,3),i*31+k);
   if(opts.length<3)throw Error('Совпадающие грамматические модели в уроке '+i);
-  return ['Выбери перевод уже изученного предложения: «'+target.ru.replace(/[.!?]+$/,'')+'».',opts,opts.indexOf(target.en)];
+  return ['Выбери английский перевод фразы «'+target.ru+'»',opts,opts.indexOf(target.en)];
  });
 }
 function reading(i){
  const {grammar:g}=material(i);
- const rotated=g.map((_,j)=>g[(i+j)%g.length]);
- const intro=rotated.map(x=>/[.!?]$/.test(x.en.trim())?x.en.trim():x.en.trim()+'.').join(' ');
+ const rotated=g.map((_,j)=>window.EJLanguageContract.auditedPrompt(g[(i+j)%g.length]));
+ const intro=rotated.map(x=>x.en).join(' ');
  const q=rotated.map((model,j)=>{
-  const opts=shuffle3(g.map(x=>x.ru),i*23+j);
+  const opts=shuffle3(g.map(x=>window.EJLanguageContract.auditedPrompt(x).ru),i*23+j);
   return {q:'Что означает предложение '+(j+1)+' из текста?',options:opts,answer:opts.indexOf(model.ru)};
  });
  return {kind:'Чтение изученных предложений',text:intro,questions:q};
@@ -56,7 +56,7 @@ function dialogues(i){
   branches[0].turns.push({lead:'Собеседник просит назвать по-английски: «'+a.ru+'».',
    leadRu:'Тебе нужно ответить только словом или выражением из уже пройденных карточек.',
    choices:opts,correct:opts.indexOf(a.en),answer:a.en});
-  const target=g[(i+k)%g.length],others=g.filter(x=>x.en!==target.en);
+  const target=window.EJLanguageContract.auditedPrompt(g[(i+k)%g.length]),others=g.filter(x=>x.en!==target.en);
   const options=shuffle3([target.en,...others.map(x=>x.en)].slice(0,3),i*19+k);
   branches[1].turns.push({lead:'Собеседник просит выразить по-английски: «'+target.ru+'».',
    leadRu:'Используй одну из трёх конструкций, показанных в разделе теории.',
@@ -76,17 +76,53 @@ skillItem=function(){
  const i=dayFocus,s=SKILLS_DATA[Math.floor(i/6)];
  return {...s,reading:reading(i),dialogues:dialogues(i)};
 };
+function teachPanel(i,u){
+ const rows=models(i).map(m=>window.EJLanguageContract.auditedPrompt(m));
+ const expected=new Set(rows.map(x=>x.en.replace(/[.!?]+$/,'').toLowerCase()));
+ const safeExamples=(u.examples||[]).filter(pair=>!expected.has(String(pair[0]||'').replace(/[.!?]+$/,'').trim().toLowerCase())).slice(0,2);
+ const exampleSection=safeExamples.length?'<h4>Другие примеры (не готовые ответы)</h4>'+
+  safeExamples.map(ex=>'<div class="ex"><b lang="en">'+esc(ex[0])+'</b><span lang="ru">'+esc(ex[1])+'</span></div>').join(''):'';
+ const disassembled=rows.map((m,j)=>{
+  const words=m.en.replace(/[.!?]+$/,'').split(/\s+/);
+  let shuffled=words.slice();
+  if(shuffled.length>1){const k=(i+j)%shuffled.length+1;shuffled=shuffled.slice(k).concat(shuffled.slice(0,k));}
+  if(shuffled.join(' ').toLowerCase()===words.join(' ').toLowerCase())shuffled.reverse();
+  const descriptor=m.type==='question'?
+   'ВОПРОС: вспомогательный глагол → подлежащее → остальное → ?':
+   m.type==='imperative'?'ЗАПРЕТ / ПОБУЖДЕНИЕ: отрицание или команда → действие → .':
+   'УТВЕРЖДЕНИЕ: подлежащее → глагол / связка → дополнение → .';
+  return '<div class="teaching-builder"><b>Модель '+(j+1)+': '+descriptor+'</b>'+
+   '<p>Значение по-русски: <strong>'+esc(m.ru)+'</strong></p>'+
+   '<p class="tiny">Слова даны НЕ в правильном порядке; составь английскую фразу сам:</p>'+
+   '<div class="teaching-tokens" aria-label="Изученные слова конструкции">'+
+   shuffled.map(x=>'<span>'+esc(x)+'</span>').join('')+'</div></div>';
+ }).join('');
+ return '<div class="known-models"><h4>Сначала правило и смысл — затем самостоятельный ответ</h4>'+
+  '<p>Здесь нет готовых английских ответов. Прочитай объяснение, примеры другой формулировки и изучи нужные слова. '+
+  'При проверке самостоятельно расставь слова в нужном порядке. <b>Вопрос и утверждение — разные конструкции!</b></p>'+
+  exampleSection+disassembled+'</div>';
+}
+function hideAnswers(text,models){
+ let s=String(text||'');
+ for(const m of models){
+  const clean=String(m.en).replace(/[.!?]+$/,'').trim();
+  if(clean.length<8)continue;
+  const rx=new RegExp(clean.replace(/[^a-zA-Z0-9 ]/g,'\\$&'),'gi');
+  s=s.replace(rx,'[пример разбирается ниже]');
+ }
+ return s;
+}
 theoryPane=function(u,day,r){
- const orig=existingTheory(u,day,r);
- // The exact three sentence patterns subsequently tested are now taught, in Russian,
- // with the English model visible *before* grammar production / comprehension.
- const note='<div class="known-models"><h4>Изучи три образца до упражнений</h4>'+
-  '<p>Все предложения ниже уже объяснены. Упражнения этой недели используют только эти конструкции и слова из сегодняшних карточек.</p>'+
-  models(dayFocus).map((m,j)=>'<div class="known-model"><b lang="ru">'+(j+1)+'. '+esc(m.ru)+'</b>'+
-   '<span lang="en">'+esc(m.en)+'</span></div>').join('')+
-  '<p class="tiny">Сначала прочитай и пойми каждую фразу. Только после этого переходи к самостоятельному переводу.</p></div>';
- // Inject teaching before the first evaluated response.
- return orig.replace('<div class="skill-section">',note+'<div class="skill-section">');
+ const original=existingTheory(u,day,r),marker='<div class="skill-section">';
+ const at=original.indexOf(marker);
+ if(at<0)throw Error('Не найден блок упражнения: недоступно для проверки');
+ let teaching=original.slice(0,at),practice=original.slice(at);
+ const start=teaching.indexOf('<h4>Примеры</h4>');
+ const next=teaching.indexOf('<p class="disclaimer">',start);
+ if(start<0||next<start)throw Error('Нет отдельного блока учебных примеров');
+ teaching=teaching.slice(0,start)+teaching.slice(next);
+ teaching=hideAnswers(teaching,models(dayFocus));
+ return teaching+teachPanel(dayFocus,u)+practice;
 };
 skillReadingPane=function(r){
  return existingReadPane(r)
@@ -188,7 +224,9 @@ window.EJPrerequisites={
   const reviewSafe=reviews.every(task=>task.mode==='choice'?
    task.options.length===3&&task.options.every(x=>known.has(x.value)||d.grammar.some(g=>g.ru===x.value)):
    known.has(task.expected));
-  return {ok:quizSafe&&readingSafe&&dialogueSafe&&writingSafe&&reviewSafe,quizSafe,readingSafe,dialogueSafe,writingSafe,reviewSafe};
+  const punctuationSafe=d.grammar.every(m=>{const c=window.EJLanguageContract.auditedPrompt(m);return c.en===m.en&&c.ru===m.ru&&((c.type==='question')===c.ru.endsWith('?'));});
+  const answersNotLeaked=d.grammar.every(m=>!teachPanel(i,courses[Math.floor(i/6)]).includes('>'+m.en+'<'));
+  return {ok:quizSafe&&readingSafe&&dialogueSafe&&writingSafe&&reviewSafe&&punctuationSafe&&answersNotLeaked,quizSafe,readingSafe,dialogueSafe,writingSafe,reviewSafe,punctuationSafe,answersNotLeaked};
  }
 };
 })();

@@ -37,7 +37,7 @@ async function scenario(label,run){
 await scenario('startup, 100 topics, 600 lessons, optional listening',async page=>{
  assert.equal(await page.evaluate(()=>courses.length),100);
  assert.equal(await page.evaluate(()=>total),600);
- assert.equal(await page.evaluate(()=>APP_VERSION),'13.7.0');
+ assert.equal(await page.evaluate(()=>APP_VERSION),'13.8.0');
  assert.equal(await page.evaluate(()=>nextTask().type),'lesson');
  await page.locator('[data-open="0"]').first().click();
  const r=await page.evaluate(()=>({steps:record(0).steps,blocked:nextTask().type}));
@@ -70,7 +70,11 @@ await scenario('prerequisite audit covers all 600 lessons: no future word in les
   const r=record(0);r.steps[1]=true;r.flowStep=1;save();render();
  });
  const pane=await page.locator('.known-models').innerText();
- for(const model of intro)assert.ok(pane.includes(model),'Every sentence used in the quiz must first appear in the theory');
+ for(const model of intro)assert.equal(pane.includes(model),false,'Finished answers must not appear intact in the teaching panel');
+ assert.ok(pane.includes('ВОПРОС:'),'Question order must be explicitly taught');
+ const contract=await page.evaluate(()=>EJLanguageContract.verify());
+ assert.equal(contract.models,300);
+ assert.deepEqual(contract.errors,[]);
  await page.evaluate(()=>{
   const r=record(0);r.steps[0]=true;r.flowStep=2;save();render();
  });
@@ -79,6 +83,41 @@ await scenario('prerequisite audit covers all 600 lessons: no future word in les
  assert.match(await page.locator('.reading-source').innerText(),/tourist/i);
  assert.equal((await page.locator('.reading-source').innerText()).includes('Mia'),false,'Untaught long reading hidden');
 });
+await scenario('question and statement meaning agrees in both languages for all lessons',async page=>{
+ const results=await page.evaluate(()=>{
+  const issues=[];
+  for(let w=0;w<100;w++){
+   const topics=SKILLS_DATA[w].grammar;
+   for(const m of topics){
+    const type=EJLanguageContract.sentenceType(m.en);
+    if((type==='question')!==m.ru.endsWith('?'))issues.push({w,m});
+    if((type==='question')!==m.en.endsWith('?'))issues.push({w,m});
+   }
+  }
+  for(let i=0;i<600;i++){
+   dayFocus=i;
+   const r=record(i),u=courses[Math.floor(i/6)];
+   const src=theoryPane(u,i%6,r).split('<div class="skill-section">')[0];
+   for(const model of SKILLS_DATA[Math.floor(i/6)].grammar){
+    if(src.toLowerCase().includes(model.en.toLowerCase()))issues.push({i,leaked:model.en});
+   }
+   const read=EJPrerequisites.reading(i);
+   for(const m of SKILLS_DATA[Math.floor(i/6)].grammar){
+    if(!read.text.includes(m.en))issues.push({i,textNotPunctuated:m.en});
+   }
+  }
+  return {issues,firstQuestion:SKILLS_DATA[0].grammar[2],reading:EJPrerequisites.reading(0).text};
+ });
+ assert.deepEqual(results.issues,[]);
+ assert.equal(results.firstQuestion.ru,'Ты из Испании?');
+ assert.equal(results.firstQuestion.en,'Are you from Spain?');
+ assert.match(results.reading,/Are you from Spain\?/);
+ await page.locator('[data-open="0"]').first().click();
+ await page.evaluate(()=>{const r=record(0);r.steps[1]=true;r.flowStep=1;save();render();});
+ assert.equal((await page.locator('.known-models').innerText()).includes('Are you from Spain?'),false);
+ assert.match(await page.locator('.known-models').innerText(),/ВОПРОС:/);
+});
+
 await scenario('diagnostic visits all six variants, no repeated attempted tasks',async page=>{
  const result=await page.evaluate(()=>{
   const levels=['A1','A2','B1'];return levels.map(l=>{
