@@ -12,7 +12,7 @@ const sandbox=vm.createContext({console,window:{},Math,Date});
 for(const file of source)vm.runInContext(fs.readFileSync(file,'utf8'),sandbox,{filename:file});
 vm.runInContext(String.raw`const PROFILES={standard:{questions:4},boost:{questions:6},review:{questions:3}};
 let dayFocus=0,total=600;
-let qlist=()=>[],skillItem=()=>({}),skillReadingPane=()=>'',skillDialogPane=()=>'',lesson=()=>'',topicBank=()=>[];
+let qlist=()=>[],skillItem=()=>({}),skillReadingPane=()=>'',skillDialogPane=()=>'',lesson=()=>'',topicBank=()=>[],wire=()=>{};
 let theoryPane=(u)=>'<h3>'+u.grammar+'</h3><p>'+u.theory+'</p><div class="notes">'+u.rule+'</div><h4>Примеры</h4>'+
 u.examples.map(pair=>'<div class="ex"><b>'+pair[0]+'</b><span>'+pair[1]+'</span></div>').join('')+
 '<p class="disclaimer">Изучи правило</p><div class="skill-section">Упражнения</div>';
