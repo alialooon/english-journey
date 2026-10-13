@@ -347,6 +347,57 @@ await scenario('guided word order and gap fill use only taught words then requir
  assert.ok(hint.includes('I = я'));
  assert.ok(!hint.includes('He is')&&!hint.includes('Are you'),'First day hint must not teach future grammar');
 });
+await scenario('grammatical model recall and situational A0 vocabulary do not leak future rules',async page=>{
+ const check=await page.evaluate(()=>({
+  weekSize:VOCAB_BANK[0].length,
+  contextual:VOCAB_BANK[0].filter(x=>Boolean(vocabUsage(x))).length,
+  hello:vocabUsage(VOCAB_MAP.get('hello')),
+  hi:vocabUsage(VOCAB_MAP.get('hi')),
+  okay:vocabUsage(VOCAB_MAP.get('okay')),
+  fine:vocabUsage(VOCAB_MAP.get('fine')),
+  foundation:EJVariety.foundationAudit()
+ }));
+ assert.equal(check.weekSize,48);
+ assert.equal(check.contextual,48);
+ assert.notEqual(check.hello,check.hi,'Ambiguous translations must have different uses');
+ assert.notEqual(check.okay,check.fine);
+ assert.equal(check.foundation.length,0,'All drill tokens must already be introduced');
+ await page.locator('[data-open="0"]').first().click();
+ assert.match(await page.locator('.vocab-usage').first().innerText(),/Ситуация:/);
+ await page.locator('[data-vocab-recall]').click();
+ assert.match(await page.locator('.vocab-usage').first().innerText(),/Ситуация:/);
+ await page.evaluate(()=>{
+  const r=record(0);r.steps[1]=true;r.flowStep=1;save();render();
+ });
+ assert.equal(await page.locator('.formula-help').count(),1);
+ assert.equal(await page.locator('[data-formula-check]').count(),2);
+ assert.equal(await page.locator('.formula-help[open]').count(),0,
+  'The pattern chart starts closed during retrieval');
+ await page.locator('[data-formula-input="0"]').fill('wrong answer');
+ await page.locator('[data-formula-check="0"]').click();
+ assert.equal(await page.evaluate(()=>Boolean(record(0).formulaDrills?.[0])),false);
+ assert.equal(await page.evaluate(()=>Boolean(record(0).steps[0])),false);
+ for(let i=0;i<2;i++){
+  const expected=await page.evaluate(k=>EJVariety.foundationPatterns[0].drill[k][1],i);
+  await page.locator('[data-formula-input="'+i+'"]').fill(expected);
+  await page.locator('[data-formula-check="'+i+'"]').click();
+ }
+ const state=await page.evaluate(()=>({
+  correct:record(0).formulaDrills,grammarPassed:record(0).steps[0]
+ }));
+ assert.equal(state.correct[0],true);
+ assert.equal(state.correct[1],true);
+ assert.equal(state.grammarPassed,false,'Optional short-form recall cannot replace free writing');
+});
+await scenario('vocabulary category examples persist through spaced recall',async page=>{
+ await page.evaluate(()=>{
+  store.vocabulary.hello={introducedAt:'2026-10-01',due:'2000-01-01',step:1,correct:1,lapses:0};
+  save();render();
+ });
+ await page.locator('[data-page="vocabulary"]').first().click();
+ assert.equal(await page.locator('[data-vocab-review="hello"]').count(),1);
+ assert.match(await page.locator('.vocab-usage').last().innerText(),/приветствие/i);
+});
 await scenario('lesson follows words -> theory -> quiz -> dialogue, keeps progress on reload',async page=>{
  await page.locator('[data-open="0"]').first().click();
  assert.equal(await page.evaluate(()=>EnglishJourneyFlow.current()),0);
