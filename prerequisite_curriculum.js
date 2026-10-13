@@ -107,7 +107,7 @@ function teachPanel(i,u){
    '<div class="notes">'+esc(window.EJVariety.teachingNotes[Math.floor(i/6)])+'</div>'+
    (examples.length?'<h4>Разобранные примеры — другие, чем в упражнениях</h4>'+
    examples.map(pair=>'<div class="ex"><b lang="en">'+esc(pair[0])+'</b><span>'+esc(pair[1])+'</span></div>').join(''):'')+
-   '<p class="tiny">Вопрос: переставь вспомогательный глагол в начало. '+
+   '<p class="tiny">ВОПРОС: переставь вспомогательный глагол в начало. '+
    'Утверждение: начни с того, о ком говоришь. Слова для всех ответов уже объяснены.</p></div>';
  }
  const rows=models(i).map(m=>window.EJLanguageContract.auditedPrompt(m));
