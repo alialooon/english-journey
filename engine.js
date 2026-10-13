@@ -211,12 +211,10 @@ function listenPane(u,day,r){return skillAudioPane(r)}
 function qlist(u,day,profile){const start=(day*2)%u.quiz.length;return Array.from({length:PROFILES[profile].questions},(_,i)=>u.quiz[(start+i)%u.quiz.length])}
 function scoreDraft(questions,r){return questions.reduce((s,q,i)=>s+(Number(r.quizDraft[i])===q[2]?1:0),0)}
 function quizPane(u,day,r){const questions=qlist(u,day,r.profile),keys=Object.keys(r.quizDraft),answered=keys.length,score=scoreDraft(questions,r),need=Math.ceil(questions.length*0.72),skills=ejSkills(r);
- return `<div class="split"><span class="pill">Шаг 4 · ориентир 10 мин</span>${r.steps[3]?'✅ Зачёт':''}</div><h3>Грамматика и слова: мини-тест</h3><p>Сначала реши ${questions.length} вопросов (${need} правильных для зачёта). Затем прочитай реальный бытовой текст и ответь на вопросы к нему. Оба результата обязательны.</p>
- ${questions.map((q,i)=>{let chosen=r.quizDraft[i];return `<div class="questiongroup"><div class="qcounter">Вопрос ${i+1} из ${questions.length}</div><div class="question">${esc(q[0])}</div>${q[1].map((opt,j)=>`<button class="choice ${chosen!==undefined&&j===q[2]?'correct':chosen===j&&j!==q[2]?'incorrect':''}" data-answer="${i}:${j}" ${chosen!==undefined?'disabled':''}>${String.fromCharCode(65+j)}. ${esc(opt)} ${chosen!==undefined&&j===q[2]?'✓':''}</button>`).join('')}</div>`}).join('')}
- ${answered===questions.length?`<div class="result ${score<need?'error':''}">Результат: ${score}/${questions.length}. ${score>=need?'Мини-тест зачтён.':'Повтори правило.'}</div>${score<need?'<button class="outline" data-resetquiz="1">Повторить мини-тест ↻</button>':''}`:`<div class="tiny">Ответов: ${answered}/${questions.length}</div>`}
- ${skillReadingPane(r)}
- ${skills.quizPassed&&skills.reading.passed?`<div class="donebanner">✓ Оба блока зачтены. ${nextButton(4)}</div>`:''}
- ${r.quizAttempts?`<p class="tiny">Попыток теста: ${r.quizAttempts} · точность первой: ${pct(r.firstAccuracy||0,1)}%</p>`:''}`;
+ return `<h3>Выбери ответ</h3><p class="tiny">Для зачёта: ${need} из ${questions.length} и упражнение на чтение ниже.</p>
+ ${questions.map((q,i)=>{let chosen=r.quizDraft[i];return `<div class="questiongroup"><div class="qcounter">${i+1}/${questions.length}</div><div class="question">${esc(q[0])}</div>${q[1].map((opt,j)=>`<button class="choice ${chosen!==undefined&&j===q[2]?'correct':chosen===j&&j!==q[2]?'incorrect':''}" data-answer="${i}:${j}" ${chosen!==undefined?'disabled':''}>${String.fromCharCode(65+j)}. ${esc(opt)} ${chosen!==undefined&&j===q[2]?'✓':''}</button>`).join('')}</div>`}).join('')}
+ ${answered===questions.length?`<div class="result ${score<need?'error':''}">${score}/${questions.length}${score<need?' — повтори правило и попробуй ещё раз':''}</div>${score<need?'<button class="outline" data-resetquiz="1">Повторить тест</button>':''}`:`<p class="tiny">Отвечено: ${answered}/${questions.length}</p>`}
+ ${skillReadingPane(r)}`;
 }
 
 function speakingPane(u,day,r){
