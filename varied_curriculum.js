@@ -146,7 +146,47 @@ const foundationLessons=[
   task:'Самостоятельно применяй знакомые конструкции в новой комбинации.'
  }
 ];
-function foundationPanel(i,escape){
+// Original pattern cards inspired by structural transformation drills, not
+// derived from course worksheets. Fragments only: never a complete test answer.
+const foundationPatterns=[
+ {rows:[['Я','I + am'],['Ты / вы','You + are']],
+  drill:[['Начало фразы «Я ...»','I am'],['Начало фразы «Ты ...»','You are']]},
+ {rows:[['Он','He + is'],['Она','She + is']],
+  drill:[['Начало фразы «Он ...»','He is'],['Начало фразы «Она ...»','She is']]},
+ {rows:[['Утверждение','You + are + ...'],['Вопрос','Are + you + ...?'],
+  ['Утверждение','He + is + ...'],['Вопрос','Is + he + ...?']],
+  drill:[['Начало вопроса «Ты ...?»','Are you'],['Начало вопроса «Он ...?»','Is he']]},
+ {rows:[['Я из ...','I + am + from + ...'],['Она из ...','She + is + from + ...']],
+  drill:[['Начало фразы «Я из ...»','I am from'],['Начало фразы «Она из ...»','She is from']]},
+ {rows:[['Утверждение','I + am + ...'],['Отрицание','I + am + not + ...'],
+  ['Утверждение','She + is + ...'],['Отрицание','She + is + not + ...']],
+  drill:[['Начало фразы «Я не ...»','I am not'],['Начало фразы «Она не ...»','She is not']]},
+ {rows:[['Мы','We + are'],['Они','They + are']],
+  drill:[['Начало фразы «Мы ...»','We are'],['Начало фразы «Они ...»','They are']]}
+];
+function foundationPatternPane(i,escape,r){
+ const map=foundationPatterns[i];if(!map)return '';
+ const done=r?.formulaDrills||{};
+ const chart='<details class="formula-help"><summary>Посмотреть схему построения</summary>'+
+  '<div class="formula-grid">'+map.rows.map(pair=>
+   '<div class="formula-cell"><span>'+escape(pair[0])+'</span><b lang="en">'+escape(pair[1])+'</b></div>').join('')+
+  '</div></details>';
+ const drills=map.drill.map((pair,j)=>{
+  const answered=Boolean(done[j]);
+  return '<div class="formula-task"><span>'+escape(pair[0])+'</span>'+
+   (answered?'<span class="tiny" aria-label="Ответ проверен">✓ Верно</span>':
+    '<div class="skill-inputrow"><input data-formula-input="'+j+'" spellcheck="false" autocomplete="off" '+
+    'placeholder="Английское начало фразы" aria-label="'+escape(pair[0])+'. Напиши на английском">'+
+    '<button class="outline" data-formula-check="'+j+'">Проверить</button></div>'+
+    (r?.formulaMistakes?.[j]?'<p class="tiny">Проверь схему выше и попробуй ещё раз.</p>':''))+
+   '</div>';
+ }).join('');
+ return '<section class="formula-training"><h4>Схема: учимся менять форму</h4>'+
+ '<p class="tiny">Сначала разбери схему, затем закрой её и попробуй вспомнить начало фразы. '+
+ 'Это дополнительная тренировка, она не заменяет самостоятельный перевод.</p>'+
+ chart+'<div class="formula-tasks">'+drills+'</div></section>';
+}
+function foundationPanel(i,escape,r){
  if(i<0||i>=6)return null;
  const item=foundationLessons[i];
  return '<div class="known-models"><h3>'+escape(item.title)+'</h3>'+
@@ -154,7 +194,7 @@ function foundationPanel(i,escape){
  '<p><b>Слова:</b> '+escape(item.words)+'</p>'+
  '<h4>Разобранные примеры (не ответы на проверку)</h4>'+
  item.examples.map(p=>'<div class="ex"><b lang="en">'+escape(p[0])+'</b><span>'+escape(p[1])+'</span></div>').join('')+
- '<p class="tiny">'+escape(item.task)+'</p></div>';
+ '<p class="tiny">'+escape(item.task)+'</p>'+foundationPatternPane(i,escape,r)+'</div>';
 }
 function foundationAudit(){
  const errors=[],seen=new Set();
@@ -196,7 +236,7 @@ function readingModels(i){
     first.some(x=>clean(x.en)===clean(assessed[2].en)))throw Error('Reading reveals a writing answer');
  return [...first,third];
 }
-window.EJVariety={curated,practice,weekModels,readingModels,teachingNotes,foundationPanel,foundationAudit,foundationHint:i=>foundationLessons[i]?.rule||'',normalized:clean,
+window.EJVariety={curated,practice,weekModels,readingModels,teachingNotes,foundationPanel,foundationPatternPane,foundationPatterns,foundationAudit,foundationHint:i=>foundationLessons[i]?.rule||'',normalized:clean,
  audit(){
   const issues=[];
   for(let i=0;i<bank.length*6;i++){
