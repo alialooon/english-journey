@@ -47,8 +47,8 @@ lesson=function(){
    (last?(dayFocus%6===5?'Перейти к зачёту темы →':'Следующий урок →'):'Следующее задание →')+
    '</button>';
  }else{
-  action='<button class="primary dark journey-continue" data-journey-next="1" disabled aria-disabled="true">Следующее задание →</button>'+
-   '<p class="tiny journey-hint">Чтобы продолжить, выполни задания текущего шага. Простое нажатие кнопки без проверки не засчитывается.</p>';
+  // Show the only "continue" action after completion; never display a dead button.
+  action='';
  }
  const nextLabel=finished?'Урок выполнен ✓':completeCount+' из 4 шагов выполнено';
  return '<div class="lesson-head"><div><span class="pill">'+esc(u.level)+' · Неделя '+
@@ -59,14 +59,13 @@ lesson=function(){
   ' <span class="pill">⏱ Активное время: <b id="session-time">'+duration(r.activeSeconds)+'</b></span>'+
   ' <span class="tiny">'+esc(mode.desc)+'</span></div>'+
   '<div class="progress"><div style="width:'+pct(completeCount,4)+'%"></div></div>'+
-  '<p class="tiny journey-progress">'+nextLabel+
-  ' · Порядок: слова → теория → тест → диалог</p>'+
+  '<p class="tiny journey-progress">'+nextLabel+'</p>'+
   '<div class="journey-layout"><div class="journey-steps" aria-label="Последовательность обучения">'+segment+
   '</div><section class="panel learn journey-current" aria-label="Текущее задание">'+
   '<div class="journey-current-heading"><span class="pill">Этап '+(index+1)+'/4</span>'+
   '<p>'+esc(part.hint)+'</p></div>'+
-  work+'<div class="journey-footer">'+action+'</div></section></div>'+
-  '<div class="journey-bonus tiny">🎧 Аудирование необязательно. Отдельный практикум доступен в меню «Живое аудио и диалоги» и не влияет на переход к следующему уроку.</div>';
+  work+(action?'<div class="journey-footer">'+action+'</div>':'')+'</section></div>'+
+  '';
 };
 wire=function(){
  existingWire();
