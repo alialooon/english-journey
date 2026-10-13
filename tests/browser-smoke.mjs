@@ -99,7 +99,8 @@ await scenario('question and statement meaning agrees in both languages for all 
    dayFocus=i;
    const r=record(i),u=courses[Math.floor(i/6)];
    const src=theoryPane(u,i%6,r).split('<div class="skill-section">')[0];
-   for(const model of SKILLS_DATA[Math.floor(i/6)].grammar){
+   const assessed=EJVariety.curated(i)?EJVariety.weekModels(i):SKILLS_DATA[Math.floor(i/6)].grammar;
+   for(const model of assessed){
     if((' '+src.toLowerCase()).includes(' '+model.en.toLowerCase())||src.toLowerCase().includes('>'+model.en.toLowerCase()))issues.push({i,leaked:model.en});
    }
    const read=EJPrerequisites.reading(i);
